@@ -27,7 +27,7 @@ def load_supermag(stations_list, syear, eyear, B_param="dbn_geo", storm_time_onl
                   data_path="/data/ramans_files/mag-feather/"):
     if saving:
         mag_data = []
-        for station_num in tqdm.trange(len(stations_list), desc="Loading SuperMAG data"):
+        for station_num in tqdm.trange(len(stations_list), desc=f"Loading SuperMAG {B_param[2]} data"):
 
             station_name = stations_list[station_num]
 
@@ -45,15 +45,15 @@ def load_supermag(stations_list, syear, eyear, B_param="dbn_geo", storm_time_onl
             storm_list = pd.read_csv("stormList.csv", header=None, names=["dates"])
             mag_data = storm_extract(mag_data, storm_list["dates"], B_param, lead=12, recovery=24)
 
-        mag_data.to_hdf(f"supermag_processed_{syear}-{eyear}.h5", key="mag_data")
+        mag_data.to_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param)
 
     else:
-        mag_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key="mag_data")
+        mag_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param)
 
     return mag_data
 
 
 if __name__ == "__main__":
     stations_list = ['YKC', "CBB"]
-    a=load_supermag(stations_list, 2008, 2019, saving=True)
+    a=load_supermag(stations_list, 2008, 2019, B_param="dbn_geo", saving=True)
     print(a)
