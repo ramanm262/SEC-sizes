@@ -44,7 +44,9 @@ def SEC_fit(trial, plot=False):
     station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
     station_geolons = np.pi / 180 * station_coords_list[1]
     epsilon = trial.suggest_float(name="epsilon", low=1e-6, high=1e-1, log=True)
-    n_sec_lat, n_sec_lon = trial.suggest_int("n_sec_lat", 4, 8), trial.suggest_int("n_sec_lon", 5, 10)  # Number of rows and columns respectively of SECSs that will exist in the grid
+    n_sec_lat, n_sec_lon = trial.suggest_int("n_sec_lat", 4, 28), trial.suggest_int("n_sec_lon", 5, 50)  # Number of rows and columns respectively of SECSs that will exist in the grid
+    print(f"\nStarting trial with epsilon={epsilon}, n_sec_lat={n_sec_lat}, n_sec_lon={n_sec_lon}\n"
+          f"Go read a book. This could take a while.")
     sec_coords_list = [np.linspace(45.5, 55.5, n_sec_lat), np.linspace(230.5, 280.5, n_sec_lon)]
     sec_geocolats = np.pi / 2 - np.pi / 180 * sec_coords_list[0]
     sec_geolons = np.pi / 180 * sec_coords_list[1]
@@ -56,7 +58,7 @@ def SEC_fit(trial, plot=False):
             all_sec_lons.append(lon)
 
     rmses = []
-    for station_num in range(len(stations_list)):
+    for station_num in tqdm.trange(len(stations_list), desc="Analyzing errors at each station"):
         this_station_geocolat, this_station_lon = station_geocolats[station_num], station_geolons[station_num]
         coords_to_be_reduced = station_coords_list.copy()
         reduced_station_coords_list = np.zeros((2, len(station_coords_list[0]) - 1))
@@ -65,7 +67,7 @@ def SEC_fit(trial, plot=False):
         this_Z_matrix = np.delete(Z_matrix, [2*station_num, 2*station_num+1], axis=1)
 
         I_interp_df = gen_current_data(this_Z_matrix, reduced_station_coords_list, sec_coords_list, epsilon=epsilon,
-                                       disable_tqdm=False)
+                                       disable_tqdm=True)
 
         interps = np.zeros(len(I_interp_df))
         for timestep in range(len(interps)):
@@ -81,5 +83,5 @@ def SEC_fit(trial, plot=False):
 
 
 study = optuna.create_study()
-study.optimize(SEC_fit, n_trials=100)
+study.optimize(SEC_fit, n_trials=50)
 study.trials_dataframe().to_csv("results.csv")
