@@ -3,14 +3,15 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from skimage import measure
 import preprocessing
+import pickle
 
 
-syear, eyear = 2010, 2014
+syear, eyear = 2016, 2016
 n_sec_lat, n_sec_lon = 4, 10  # Number of rows and columns respectively of SECSs that will exist in the grid
-n_poi_lat, n_poi_lon = 14, 40  # Number of rows and columns respectively of POIs that will exist in the grid
+n_poi_lat, n_poi_lon = 21, 40  # Number of rows and columns respectively of POIs that will exist in the grid
 R_I = 100000.+6378100.  # Radius of constructed current surface
 r = 6378100.  # Radius from the center of the Earth to a station
-B_param = "dbn_geo"
+B_param = "dbe_geo"
 stations_list = ['YKC', 'CBB', 'BLC', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'FRD', 'GIM', 'FCC', 'FMC', 'FSP',
                  'SMI', 'ISL', 'PIN', 'RAL', 'INK', 'CMO', 'IQA', 'LET',
                  'T16', 'T32', 'T33', 'T36']
@@ -22,10 +23,10 @@ station_coords_list = [np.array([62.48, 69.1, 64.33, 57.07, 40.13, 48.52, 48.27,
                                  247.13, 240.2, 277.7, 259.1, 246.69])]
 sec_coords_list = [np.linspace(45.5, 55.5, n_sec_lat), np.linspace(230.5, 280.5, n_sec_lon)]
 poi_coords_list = [np.linspace(40, 60, n_poi_lat), np.linspace(220, 290, n_poi_lon)]
-epsilon = 1e-3
+epsilon = 1e-4
 load_scaling_factors = False
 plot_interps = True
-plot_every_n_interps = 1
+plot_every_n_interps = 1000
 
 station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
 station_geolons = np.pi / 180 * station_coords_list[1]
@@ -70,7 +71,7 @@ divider = make_axes_locatable(ax2)
 cax = divider.append_axes('right', size='5%', pad=0.05)
 norm = plt.cm.colors.Normalize(vmin=np.min(Z_matrix), vmax=np.max(Z_matrix))
 scalarmappable = plt.cm.ScalarMappable(norm=norm, cmap=color_map)
-ax1.scatter(station_coords_list[1], station_coords_list[0])
+station_scatter = ax1.scatter(station_coords_list[1], station_coords_list[0])
 ax1.set_xlim(200, 310)
 ax1.set_ylim(35, 75)
 ax1.set_title("Locations of Stations and Current System Poles")
@@ -78,40 +79,40 @@ ax1.set_title("Locations of Stations and Current System Poles")
 if load_scaling_factors:
     I_interp_df = pd.read_hdf(f"I_interps_{n_sec_lat}by{n_sec_lon}.h5", key="I_interp_df")
 else:
-    I_interp_df = gen_current_data(Z_matrix, station_coords_list, sec_coords_list, epsilon=epsilon).iloc[:10]
+    I_interp_df = gen_current_data(Z_matrix, station_coords_list, sec_coords_list, epsilon=epsilon)
     I_interp_df.to_hdf(f"I_interps_{n_sec_lat}by{n_sec_lon}.h5", key="I_interp_df")
 
-all_B_interps = [0]*len(poi_coords_list[0])*len(poi_coords_list[1])
-B_interp_df = pd.DataFrame([])
-for poi_num in tqdm.trange(len(all_B_interps), desc="Generating B field interpolations"):
-    B_poi_interps = np.zeros((len(I_interp_df),))
-    for timestep in range(len(B_poi_interps)):
-        B_poi_interps[timestep] = predict_B_timestep(I_interp_df.iloc[timestep], B_param,
+all_B_interps = [pd.Series(np.zeros((len(I_interp_df),)))] * len(poi_coords_list[0]) * len(poi_coords_list[1])
+all_B_interps = pd.concat(all_B_interps, axis=1)
+for timestep in tqdm.trange(len(I_interp_df), desc="Generating B-field interpolation"):
+    B_poi_interps = np.zeros((len(poi_coords_list[0]) * len(poi_coords_list[1])),)
+    for poi_num in range(len(B_poi_interps)):
+        B_poi_interps[poi_num] = predict_B_timestep(I_interp_df.iloc[timestep], B_param,
                                                      poi_colat=all_poi_colats[poi_num],
                                                      poi_lon=all_poi_lons[poi_num],
                                                      all_sec_colats=all_sec_colats, all_sec_lons=all_sec_lons,
                                                      r=r, R_I=R_I)
-    B_interp_df = pd.concat([B_interp_df, pd.Series(B_poi_interps, name=poi_num)], axis=1)
-    all_B_interps[poi_num] = B_interp_df[poi_num]
-del B_interp_df
-all_B_interps = pd.concat(all_B_interps, axis=1)
+    all_B_interps.iloc[timestep] = pd.Series(B_poi_interps, name=timestep)
 
+# Save all_B_interps to h5
+all_B_interps.to_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}.h5", key=B_param)
 
-
-for timestep in tqdm.trange(len(all_B_interps), desc="Generating current data"):
+perimeters = []
+for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
     heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
 
     if plot_interps and (timestep % plot_every_n_interps == 0):
         ax2.clear()
         ax2.scatter(np.array(all_poi_lons) * 180 / np.pi, all_poi_lats, c=all_B_interps.iloc[0], cmap=color_map)
+        station_scatter.set_color(np.random.rand(len(station_coords_list[0]), 3))
         ax2.set_xlim(210, 300)
-        ax2.set_ylim(35, 65)
+        ax2.set_ylim(35, 75)
         ax2.set_title(f"Interpolation (epsilon = {epsilon})")
         cb = fig.colorbar(scalarmappable, ax=(ax1, ax2), cax=cax, orientation='vertical')
 
     contours = measure.find_contours(heatmap_data)  # Each element of list is a list coords in row, col format
 
-    perimeters = []
+    this_perimeters = []
     for contour in contours:
         this_contour_lons = poi_lons_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
         this_contour_lats = poi_lats_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
@@ -121,9 +122,14 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating current data"):
         contour_mask = np.zeros_like(heatmap_data)
         contour_mask[contour[:, 0].astype(int), contour[:, 1].astype(int)] = 1
         if contour[0, 0] == contour[-1, 0] and contour[0, 1] == contour[-1, 1]:  # If contour is closed
-            perimeters.append(measure.perimeter(contour_mask))
+            this_perimeters.append(measure.perimeter(contour_mask))
 
-    plt.savefig(f"interp_plots/interpolated_values_{timestep}.png")
+    if plot_interps and (timestep % plot_every_n_interps == 0):
+        plt.savefig(f"interp_plots/interpolated_values_{timestep}.png")
+    perimeters.append(this_perimeters)
+
+with open(f"perimeters_{syear}-{eyear}.p", "wb") as f:
+    pickle.dump(perimeters, f)
 
 print("Done")
 
