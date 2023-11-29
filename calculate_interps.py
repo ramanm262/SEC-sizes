@@ -1,9 +1,5 @@
 from sec import *
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from skimage import measure
 import preprocessing
-import pickle
 
 
 syear, eyear = 2016, 2016
