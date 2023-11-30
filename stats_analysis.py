@@ -14,6 +14,7 @@ station_coords_list = [np.array([62.48, 69.1, 64.33, 57.07, 40.13, 48.52, 48.27,
                        np.array([245.52, 255.0, 263.97, 224.67, 254.77, 236.58, 242.88, 284.45, 282.63, 265.36,
                                  265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 226.7, 212.14, 291.48,
                                  247.13, 240.2, 277.7, 259.1, 246.69])]
+n_sec_lat, n_sec_lon = 16, 7  # Number of rows and columns respectively of SECSs that will exist in the grid
 n_poi_lat, n_poi_lon = 21, 40  # Number of rows and columns respectively of POIs that will exist in the grid
 poi_coords_list = [np.linspace(40, 60, n_poi_lat), np.linspace(220, 290, n_poi_lon)]
 epsilon = 0.09610742146188743
@@ -33,7 +34,7 @@ def mean_deviation(B_interp_vector):
     return np.mean(np.abs(B_interp_vector))
 
 
-all_B_interps = pd.read_hdf('all_B_interps_16by7.h5', 'dbn_geo')
+all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", 'dbn_geo')
 
 mean_list, std_list, rms_deviation_list, mean_deviation_list, max_list, min_list = [], [], [], [], [], []
 

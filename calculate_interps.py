@@ -2,7 +2,7 @@ from sec import *
 import preprocessing
 
 
-syear, eyear = 2016, 2016
+syear, eyear = 2008, 2019
 n_sec_lat, n_sec_lon = 16, 7  # Number of rows and columns respectively of SECSs that will exist in the grid
 n_poi_lat, n_poi_lon = 21, 40  # Number of rows and columns respectively of POIs that will exist in the grid
 R_I = 100000.+6378100.  # Radius of constructed current surface
@@ -80,7 +80,7 @@ for timestep in tqdm.trange(len(I_interp_df), desc="Generating B-field interpola
     all_B_interps.iloc[timestep] = pd.Series(B_poi_interps, name=timestep)
 
 # Save all_B_interps to h5
-all_B_interps.to_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}.h5", key=B_param)
+all_B_interps.to_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", key=B_param)
 
 print("Done")
 
