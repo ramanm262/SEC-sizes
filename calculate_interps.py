@@ -20,7 +20,7 @@ station_coords_list = [np.array([62.48, 69.1, 64.33, 57.07, 40.13, 48.52, 48.27,
 sec_coords_list = [np.linspace(45.5, 55.5, n_sec_lat), np.linspace(230.5, 280.5, n_sec_lon)]
 poi_coords_list = [np.linspace(40, 60, n_poi_lat), np.linspace(220, 290, n_poi_lon)]
 epsilon = 0.09610742146188743
-load_scaling_factors = False
+load_scaling_factors = True
 plot_interps = True
 plot_every_n_interps = 1000
 
@@ -62,10 +62,10 @@ Z_matrix = pd.concat(Z_matrix, axis=1)
 Z_matrix = Z_matrix.to_numpy()
 
 if load_scaling_factors:
-    I_interp_df = pd.read_hdf(f"I_interps_{n_sec_lat}by{n_sec_lon}.h5", key="I_interp_df")
+    I_interp_df = pd.read_hdf(f"I_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", key="I_interp_df")
 else:
     I_interp_df = gen_current_data(Z_matrix, station_coords_list, sec_coords_list, epsilon=epsilon)
-    I_interp_df.to_hdf(f"I_interps_{n_sec_lat}by{n_sec_lon}.h5", key="I_interp_df")
+    I_interp_df.to_hdf(f"I_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", key="I_interp_df")
 
 all_B_interps = [pd.Series(np.zeros((len(I_interp_df),)))] * len(poi_coords_list[0]) * len(poi_coords_list[1])
 all_B_interps = pd.concat(all_B_interps, axis=1)
