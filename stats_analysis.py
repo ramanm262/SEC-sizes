@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pandas as pd
 import numpy as np
+from sklearn.metrics.pairwise import haversine_distances
 from skimage import measure
 import tqdm
 
@@ -34,6 +35,17 @@ def mean_deviation(B_interp_vector):
     return np.mean(np.abs(B_interp_vector))
 
 
+def calculate_perimeter(contour, poi_coords_list, r=6378100):
+    rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
+    rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
+    contour[:, 0], contour[:, 1] = (contour[:, 0] * rad_between_rows + poi_coords_list[0][0] * np.pi / 180,
+                                    contour[:, 1] * rad_between_cols + poi_coords_list[1][0] * np.pi / 180)
+    hd_matrix = haversine_distances(contour, contour)  # Contains the distances between each pair of vertices
+    # Use only the distances between each successive vertex
+    perimeter_km = np.sum(np.diag(hd_matrix, k=1)) * r / 1000
+    return perimeter_km
+
+
 all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", 'dbn_geo')
 
 mean_list, std_list, rms_deviation_list, mean_deviation_list, max_list, min_list = [], [], [], [], [], []
@@ -52,7 +64,7 @@ y_axis_max = 12600
 plt.hist(mean_list, bins=int(2*np.max(mean_list)/5), align="left")
 plt.title("Spatial Mean of Disturbance")
 plt.xlabel("Mean Disturbance (nT)")
-plt.ylabel("Number of times the region had this value")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.ylim(0, y_axis_max)
 plt.tight_layout()
 plt.savefig(stats_plots_location + "mean.png")
@@ -61,7 +73,7 @@ plt.cla()
 plt.hist(std_list, bins=int(np.max(std_list)/10), align="left")
 plt.title("Spatial Standard Deviation of Disturbance")
 plt.xlabel("Standard Deviation of Disturbance (nT)")
-plt.ylabel("Number of times the region had this value")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.ylim(0, y_axis_max)
 plt.tight_layout()
 plt.savefig(stats_plots_location + "std.png")
@@ -70,7 +82,7 @@ plt.cla()
 plt.hist(mean_deviation_list, bins=int(np.max(mean_deviation_list)/10), align="left")
 plt.title("Spatial Mean Deviation of Disturbance")
 plt.xlabel("Mean Deviation of Disturbance (nT)")
-plt.ylabel("Number of times the region had this value")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.ylim(0, y_axis_max)
 plt.tight_layout()
 plt.savefig(stats_plots_location + "mean_deviation.png")
@@ -79,7 +91,7 @@ plt.cla()
 plt.hist(rms_deviation_list, bins=int(np.max(rms_deviation_list)/10), align="left")
 plt.title("Spatial RMS Deviation of Disturbance")
 plt.xlabel("RMS Deviation of Disturbance (nT)")
-plt.ylabel("Number of times the region had this value")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.ylim(0, y_axis_max)
 plt.tight_layout()
 plt.savefig(stats_plots_location + "rms_deviation.png")
@@ -88,7 +100,7 @@ plt.cla()
 plt.hist(max_list, bins=int(np.max(max_list)/50), align="left")
 plt.title("Spatial Maximum of Disturbance")
 plt.xlabel("Maximum Disturbance (nT)")
-plt.ylabel("Number of times the region had this value")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.ylim(0, y_axis_max)
 plt.tight_layout()
 plt.savefig(stats_plots_location + "max.png")
@@ -97,7 +109,7 @@ plt.cla()
 plt.hist(min_list, bins=int(np.abs(np.min(min_list))/50), align="left")
 plt.title("Spatial Minimum of Disturbance")
 plt.xlabel("Minimum Disturbance (nT)")
-plt.ylabel("Number of times the region had this value")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.ylim(0, y_axis_max)
 plt.tight_layout()
 plt.savefig(stats_plots_location + "min.png")
@@ -153,10 +165,8 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
         this_contour_lats = poi_lats_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
         if plot_interps and (timestep % plot_every_n_interps == 0):  # Only plot if plotting is enabled
             ax2.plot(this_contour_lons, this_contour_lats, linewidth=2, color='black')
-        contour_mask = np.zeros_like(heatmap_data)
-        contour_mask[contour[:, 0].astype(int), contour[:, 1].astype(int)] = 1
         if contour[0, 0] == contour[-1, 0] and contour[0, 1] == contour[-1, 1]:  # If contour is closed
-            this_perimeters.append(measure.perimeter(contour_mask))
+            this_perimeters.append(calculate_perimeter(contour, poi_coords_list=poi_coords_list))
 
     if plot_interps and (timestep % plot_every_n_interps == 0):
         plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.png")
@@ -169,14 +179,14 @@ plt.figure()
 plt.hist(num_of_perimeters_list)
 plt.title("Number of dB 'Blobs'")
 plt.xlabel("Number of blobs")
-plt.ylabel("Number of times the region had this value")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.tight_layout()
 plt.savefig(stats_plots_location + "num_of_blobs.png")
 
 plt.figure()
-plt.hist(all_perimeter_sizes_list)
+plt.hist(all_perimeter_sizes_list, bins=int(np.max(all_perimeter_sizes_list)/50), align="left")
 plt.title("dB Blob Sizes")
-plt.xlabel("dB Blob Size")
-plt.ylabel("Number of times the region had this value")
+plt.xlabel("dB Blob Perimeter (km)")
+plt.ylabel(f"Number of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}")
 plt.tight_layout()
 plt.savefig(stats_plots_location + "blob_sizes.png")
