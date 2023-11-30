@@ -57,5 +57,5 @@ if __name__ == "__main__":
     stations_list = ['YKC', 'CBB', 'BLC', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'FRD', 'GIM', 'FCC', 'FMC', 'FSP',
                  'SMI', 'ISL', 'PIN', 'RAL', 'INK', 'CMO', 'IQA', 'LET',
                  'T16', 'T32', 'T33', 'T36']
-    a=load_supermag(stations_list, 2016, 2016, B_param="dbe_geo", saving=True)
-    print(a)
+    load_supermag(stations_list, 2016, 2016, B_param="dbe_geo", saving=True)
+    print("Done")
