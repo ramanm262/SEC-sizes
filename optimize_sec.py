@@ -7,7 +7,6 @@ from sklearn.metrics import mean_squared_error, explained_variance_score, r2_sco
 import optuna
 
 syear, eyear = 2016, 2016
-n_poi_lat, n_poi_lon = 40, 40  # Number of rows and columns respectively of POIs that will exist in the grid
 R_I = 100000.+6378100.  # Radius of constructed current surface
 r = 6378100.  # Radius from the center of the Earth to a stati
 B_param = "dbn_geo"
