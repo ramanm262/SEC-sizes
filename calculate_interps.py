@@ -1,10 +1,11 @@
 from sec import *
 import preprocessing
+from multiprocessing import Pool
 
 
 syear, eyear = 2008, 2019
 n_sec_lat, n_sec_lon = 16, 7  # Number of rows and columns respectively of SECSs that will exist in the grid
-n_poi_lat, n_poi_lon = 21, 40  # Number of rows and columns respectively of POIs that will exist in the grid
+n_poi_lat, n_poi_lon = 14, 32  # Number of rows and columns respectively of POIs that will exist in the grid
 R_I = 100000.+6378100.  # Radius of constructed current surface
 r = 6378100.  # Radius from the center of the Earth to a station
 B_param = "dbn_geo"
@@ -19,10 +20,9 @@ station_coords_list = [np.array([62.48, 69.1, 64.33, 57.07, 40.13, 48.52, 48.27,
                                  247.13, 240.2, 277.7, 259.1, 246.69])]
 sec_coords_list = [np.linspace(45.5, 55.5, n_sec_lat), np.linspace(230.5, 280.5, n_sec_lon)]
 poi_coords_list = [np.linspace(40, 60, n_poi_lat), np.linspace(220, 290, n_poi_lon)]
-epsilon = 0.09610742146188743
+epsilon = 0.09511368053258676
 load_scaling_factors = True
-plot_interps = True
-plot_every_n_interps = 1000
+num_mp_procs = 16
 
 station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
 station_geolons = np.pi / 180 * station_coords_list[1]
@@ -71,12 +71,10 @@ all_B_interps = [pd.Series(np.zeros((len(I_interp_df),)))] * len(poi_coords_list
 all_B_interps = pd.concat(all_B_interps, axis=1)
 for timestep in tqdm.trange(len(I_interp_df), desc="Generating B-field interpolation"):
     B_poi_interps = np.zeros((len(poi_coords_list[0]) * len(poi_coords_list[1])),)
-    for poi_num in range(len(B_poi_interps)):
-        B_poi_interps[poi_num] = predict_B_timestep(I_interp_df.iloc[timestep], B_param,
-                                                     poi_colat=all_poi_colats[poi_num],
-                                                     poi_lon=all_poi_lons[poi_num],
-                                                     all_sec_colats=all_sec_colats, all_sec_lons=all_sec_lons,
-                                                     r=r, R_I=R_I)
+    multiproc_args = [(I_interp_df.iloc[timestep], B_param, all_poi_colats[poi_num], all_poi_lons[poi_num],
+                       all_sec_colats, all_sec_lons, r, R_I) for poi_num in range(len(B_poi_interps))]
+    with Pool(processes=num_mp_procs) as pool:
+        B_poi_interps = pool.starmap(predict_B_timestep, multiproc_args)
     all_B_interps.iloc[timestep] = pd.Series(B_poi_interps, name=timestep)
 
 # Save all_B_interps to h5
