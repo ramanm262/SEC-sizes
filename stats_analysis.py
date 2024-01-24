@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.cm as cm
+import matplotlib.patches as patches
 import cartopy.crs as ccrs
 import pandas as pd
 import numpy as np
@@ -11,7 +12,7 @@ import preprocessing
 
 
 # Config variables
-syear, eyear = 2016, 2016
+syear, eyear = 2008, 2019
 stations_list = ['YKC', 'CBB', 'BLC', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'FRD', 'GIM', 'FCC', 'FMC', 'FSP',
                  'SMI', 'ISL', 'PIN', 'RAL', 'INK', 'CMO', 'IQA', 'LET',
                  'T16', 'T32', 'T33', 'T36']
@@ -22,10 +23,10 @@ station_coords_list = [np.array([62.48, 69.1, 64.33, 57.07, 40.13, 48.52, 48.27,
                                  265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 226.7, 212.14, 291.48,
                                  247.13, 240.2, 277.7, 259.1, 246.69])]
 n_sec_lat, n_sec_lon = 16, 7  # # of rows and columns respectively of SECSs that will exist in the grid
-n_poi_lat, n_poi_lon = 21, 40  # # of rows and columns respectively of POIs that will exist in the grid
+n_poi_lat, n_poi_lon = 14, 32  # # of rows and columns respectively of POIs that will exist in the grid
 w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
 poi_coords_list = [np.linspace(40, 60, n_poi_lat), np.linspace(220, 290, n_poi_lon)]
-epsilon = 0.09610742146188743
+epsilon = 0.09511368053258676
 B_param = "dbn_geo"
 plot_interps = True
 plot_every_n_interps = 1000
@@ -46,8 +47,8 @@ def mean_deviation(B_interp_vector):
 def calculate_perimeter(contour, poi_coords_list, r=6378100):
     rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
     rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
-    contour[:, 0], contour[:, 1] = (contour[:, 0] * rad_between_rows + poi_coords_list[0][0] * np.pi / 180,
-                                    contour[:, 1] * rad_between_cols + poi_coords_list[1][0] * np.pi / 180)
+    contour[:, 0], contour[:, 1] = (contour[:, 0] * np.pi / 180 + poi_coords_list[0][0] * rad_between_rows,
+                                    contour[:, 1] * np.pi / 180 + poi_coords_list[1][0] * rad_between_cols)
     hd_matrix = haversine_distances(contour, contour)  # Contains the distances between each pair of vertices
     # Use only the distances between each successive vertex
     perimeter_km = np.sum(np.diag(hd_matrix, k=1)) * r / 1000
@@ -168,7 +169,7 @@ ax1.set_title("Locations of Stations", fontsize=16)
 # Load SuperMAG data for comparison to interpolations
 mag_data = preprocessing.load_supermag(stations_list, syear, eyear, B_param, saving=False)
 
-
+anomaly_coords = []
 perimeters = []
 for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
     heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
@@ -191,16 +192,21 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
         cb.ax.set_title('nT', fontsize=16)
         cb.ax.tick_params(labelsize=14)
 
-    contours = measure.find_contours(heatmap_data)  # Each element of list is a list coords in row, col format
+    contours = measure.find_contours(heatmap_data)  # Each element of list is a list of coords in row, col format (not degrees)
 
     this_perimeters = []
     for contour in contours:
         this_contour_lons = poi_lons_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
         this_contour_lats = poi_lats_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
         if plot_interps and (timestep % plot_every_n_interps == 0):  # Only plot if plotting is enabled
-            ax2.plot(this_contour_lons, this_contour_lats, linewidth=2, color='black', transform=ccrs.PlateCarree())
+            ax2.plot(this_contour_lons, this_contour_lats, linewidth=4, color='black', transform=ccrs.PlateCarree())
         if contour[0, 0] == contour[-1, 0] and contour[0, 1] == contour[-1, 1]:  # If contour is closed
-            this_perimeters.append(calculate_perimeter(contour, poi_coords_list=poi_coords_list))
+            this_perimeters.append(calculate_perimeter(contour.copy(), poi_coords_list=poi_coords_list))
+            p = calculate_perimeter(contour.copy(), poi_coords_list=poi_coords_list)
+            if p > 1850 and p < 2000:
+                anomaly_coords.append([np.mean(this_contour_lats), np.mean(this_contour_lons)])
+            else:
+                anomaly_coords.append([np.nan, np.nan])
 
     if plot_interps and (timestep % plot_every_n_interps == 0):
         plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.png")
@@ -221,10 +227,48 @@ plt.savefig(stats_plots_location + "num_of_blobs.png")
 
 plt.figure()
 plt.hist(all_perimeter_sizes_list, bins=int(np.max(all_perimeter_sizes_list)/50), align="left")
-plt.title("dB Blob Sizes", fontsize=16)
+plt.title(f"dB Blob Sizes 2016", fontsize=16)
 plt.xlabel("dB Blob Perimeter (km)", fontsize=14)
 plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
 plt.yticks(fontsize=14)
 plt.xticks(fontsize=14)
+# plt.xlim(1650,2400)
 plt.tight_layout()
-plt.savefig(stats_plots_location + "blob_sizes.png")
+plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
+
+timestamps = pd.to_datetime(pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key="dbn_geo").index,
+                            unit='s')
+plt.figure()
+perimeter_maxes = [0]*len(perimeters)
+for timestep in range(len(perimeters)):
+    if len(perimeters[timestep]) > 0:
+        perimeter_maxes[timestep] = np.max(perimeters[timestep])
+
+plt.plot(timestamps, perimeter_maxes)
+plt.title(f"dB Blob Sizes {syear}{('-'+str(eyear))*(syear!=eyear)} (Example Storm)", fontsize=16)
+plt.xlabel("Time", fontsize=14)
+plt.ylabel(f"Perimeter of largest blob (km)", fontsize=14)
+plt.yticks(fontsize=14)
+plt.xticks(fontsize=14, rotation=40)
+plt.xlim(pd.to_datetime("2016-09-01 12:00:00"), pd.to_datetime("2016-09-03 04:00:00"))
+plt.tight_layout()
+plt.savefig(stats_plots_location + "blob_size_timeseries.png")
+
+plt.cla()
+plt.figure()
+fig, ax = plt.subplots(1, 1, figsize=(10, 5), subplot_kw={"projection": projection})
+ax.set_extent((w_lon, e_lon-5, s_lat, n_lat))
+ax.set_title(f'Locations of Anomalies', fontsize=20)
+centroids = ax.scatter([coords[1] for coords in anomaly_coords],
+           [coords[0] for coords in anomaly_coords],
+           c="orange", s=20, transform=ccrs.PlateCarree(),
+           label="Anomaly Centroids")
+station_scatter = ax.scatter(station_coords_list[1], station_coords_list[0], c="green", marker='*',
+                              s=160, transform=ccrs.PlateCarree(), label="Magnetometer Stations")
+rect = ax.add_patch(patches.Rectangle((230.5, 45.5), 50, 10, facecolor="#1f77b4",
+                         alpha=0.2, transform=ccrs.PlateCarree(), label="Current System Grid Extent"))
+
+plt.legend(loc="upper left", prop={'size': 14}, handles=[centroids, station_scatter, rect])
+ax.gridlines(draw_labels=False)
+ax.coastlines()
+plt.savefig(stats_plots_location + "anomaly_locs.png")
