@@ -70,7 +70,7 @@ def SEC_fit(trial, plot=False):
     station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
     station_geolons = np.pi / 180 * station_coords_list[1]
     epsilon = trial.suggest_float(name="epsilon", low=1e-6, high=1e-1, log=True)
-    n_sec_lat, n_sec_lon = trial.suggest_int("n_sec_lat", 4, 40), trial.suggest_int("n_sec_lon", 5, 50)  # Number of rows and columns respectively of SECSs that will exist in the grid
+    n_sec_lat, n_sec_lon = trial.suggest_int("n_sec_lat", 18, 19), trial.suggest_int("n_sec_lon", 55, 56)  # Number of rows and columns respectively of SECSs that will exist in the grid
     print(f"\nStarting trial with epsilon={epsilon}, n_sec_lat={n_sec_lat}, n_sec_lon={n_sec_lon}\n"
           f"Go read a book. This could take a while.")
     sec_coords_list = [np.linspace(45.5, 55.5, n_sec_lat), np.linspace(230.5, 280.5, n_sec_lon)]
@@ -92,6 +92,6 @@ def SEC_fit(trial, plot=False):
     return np.mean(rmses)
 
 
-study = optuna.create_study()
-study.optimize(SEC_fit, n_trials=50, storage=f"sqlite:///storage_{syear}-{eyear}.db", load_if_exists=True)
+study = optuna.create_study(storage=f"sqlite:///storage_{syear}-{eyear}.db", load_if_exists=True)
+study.optimize(SEC_fit, n_trials=50)
 study.trials_dataframe().to_csv(f"results_{syear}-{eyear}.csv")
