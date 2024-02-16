@@ -3,25 +3,24 @@ import preprocessing
 from multiprocessing import Pool
 
 
-syear, eyear = 2008, 2019
-n_sec_lat, n_sec_lon = 16, 7  # Number of rows and columns respectively of SECSs that will exist in the grid
+syear, eyear = 2009, 2019
+n_sec_lat, n_sec_lon = 10, 35  # Number of rows and columns respectively of SECSs that will exist in the grid
 n_poi_lat, n_poi_lon = 14, 32  # Number of rows and columns respectively of POIs that will exist in the grid
 R_I = 100000.+6378100.  # Radius of constructed current surface
 r = 6378100.  # Radius from the center of the Earth to a station
 B_param = "dbn_geo"
-stations_list = ['YKC', 'CBB', 'BLC', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'FRD', 'GIM', 'FCC', 'FMC', 'FSP',
-                 'SMI', 'ISL', 'PIN', 'RAL', 'INK', 'CMO', 'IQA', 'LET',
-                 'T16', 'T32', 'T33', 'T36']
-station_coords_list = [np.array([62.48, 69.1, 64.33, 57.07, 40.13, 48.52, 48.27, 45.4, 38.2, 56.38, 58.76, 56.66,
-                                 61.76, 60.02, 53.86, 50.2, 58.22, 68.25, 64.87, 63.75, 49.64, 39.19, 49.4, 54.0,
-                                 54.71]),
-                       np.array([245.52, 255.0, 263.97, 224.67, 254.77, 236.58, 242.88, 284.45, 282.63, 265.36,
-                                 265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 226.7, 212.14, 291.48,
-                                 247.13, 240.2, 277.7, 259.1, 246.69])]
-sec_coords_list = [np.linspace(45.5, 55.5, n_sec_lat), np.linspace(230.5, 280.5, n_sec_lon)]
-poi_coords_list = [np.linspace(40, 60, n_poi_lat), np.linspace(220, 290, n_poi_lon)]
-epsilon = 0.09511368053258676
-load_scaling_factors = True
+stations_list = ['YKC', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'GIM', 'DAW', 'FCC', 'FMC',
+                 'FSP', 'SMI', 'ISL', 'PIN', 'RAL', 'RAN', 'CMO', 'IQA', 'C04', 'C06', 'C10', 'T36']
+station_coords_list = [np.array([62.48, 64.33, 54.62, 57.07, 40.13, 48.52, 48.27, 45.4, 56.38, 64.05, 58.76,
+                                 56.66, 61.76, 60.02, 53.86, 50.2, 58.22, 62.82, 64.87, 63.75, 50.06, 53.35,
+                                 47.66, 54.71]),
+                       np.array([245.52, 263.97, 246.65, 224.67, 254.77, 236.58, 242.88, 284.45, 265.36, 220.89,
+                                 265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 267.89, 212.14, 291.48,
+                                 251.74, 247.03, 245.79, 246.69])]
+poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
+sec_coords_list = [np.linspace(40.5, 60.5, n_sec_lat), np.linspace(220.5, 290.5, n_sec_lon)]
+epsilon = 0.09323151264778985
+load_scaling_factors = False
 num_mp_procs = 16
 
 station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
@@ -70,9 +69,9 @@ else:
 all_B_interps = [pd.Series(np.zeros((len(I_interp_df),)))] * len(poi_coords_list[0]) * len(poi_coords_list[1])
 all_B_interps = pd.concat(all_B_interps, axis=1)
 for timestep in tqdm.trange(len(I_interp_df), desc="Generating B-field interpolation"):
-    B_poi_interps = np.zeros((len(poi_coords_list[0]) * len(poi_coords_list[1])),)
-    multiproc_args = [(I_interp_df.iloc[timestep], B_param, all_poi_colats[poi_num], all_poi_lons[poi_num],
-                       all_sec_colats, all_sec_lons, r, R_I) for poi_num in range(len(B_poi_interps))]
+    multiproc_args = [(I_interp_df.iloc[timestep], B_param, all_poi_colats[poi_num],
+                       all_poi_lons[poi_num], all_sec_colats, all_sec_lons, r, R_I)
+                      for poi_num in range(len(poi_coords_list[0]) * len(poi_coords_list[1]))]
     with Pool(processes=num_mp_procs) as pool:
         B_poi_interps = pool.starmap(predict_B_timestep, multiproc_args)
     all_B_interps.iloc[timestep] = pd.Series(B_poi_interps, name=timestep)
