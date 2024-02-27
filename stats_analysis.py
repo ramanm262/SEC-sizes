@@ -47,12 +47,23 @@ def mean_deviation(B_interp_vector):
 def calculate_perimeter(contour, poi_coords_list, r=6378100):
     rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
     rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
-    contour[:, 0], contour[:, 1] = (contour[:, 0] * np.pi / 180 + poi_coords_list[0][0] * rad_between_rows,
-                                    contour[:, 1] * np.pi / 180 + poi_coords_list[1][0] * rad_between_cols)
+    contour[:, 0], contour[:, 1] = (contour[:, 0] * rad_between_rows + poi_coords_list[0][0] * np.pi / 180,
+                                    contour[:, 1] * rad_between_cols + poi_coords_list[1][0] * np.pi / 180)
     hd_matrix = haversine_distances(contour, contour)  # Contains the distances between each pair of vertices
     # Use only the distances between each successive vertex
     perimeter_km = np.sum(np.diag(hd_matrix, k=1)) * r / 1000
     return perimeter_km
+
+
+# def calculate_aspect_ratio(contour, poi_coords_list, r=6378100):
+#     rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
+#     rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
+#     contour[:, 0], contour[:, 1] = (contour[:, 0] * np.pi / 180 + poi_coords_list[0][0] * rad_between_rows,
+#                                     contour[:, 1] * np.pi / 180 + poi_coords_list[1][0] * rad_between_cols)
+#     hd_matrix = haversine_distances(contour, contour)  # Contains the distances between each pair of vertices
+#     # Use only the distances between each successive vertex
+#     perimeter_km = np.sum(np.diag(hd_matrix, k=1)) * r / 1000
+#     return perimeter_km
 
 
 all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
