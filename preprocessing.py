@@ -54,8 +54,7 @@ def load_supermag(stations_list, syear, eyear, B_param="dbn_geo", storm_time_onl
 
 
 if __name__ == "__main__":
-    stations_list = ['YKC', 'CBB', 'BLC', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'FRD', 'GIM', 'FCC', 'FMC', 'FSP',
-                 'SMI', 'ISL', 'PIN', 'RAL', 'INK', 'CMO', 'IQA', 'LET',
-                 'T16', 'T32', 'T33', 'T36']
-    load_supermag(stations_list, 2016, 2016, B_param="dbe_geo", saving=True)
+    stations_list = ['YKC', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'GIM', 'DAW', 'FCC', 'FMC',
+                     'FSP', 'SMI', 'ISL', 'PIN', 'RAL', 'RAN', 'CMO', 'IQA', 'C04', 'C06', 'C10', 'T36']
+    load_supermag(stations_list, 2009, 2019, B_param="dbn_geo", saving=True)
     print("Done")

@@ -54,11 +54,10 @@ def preprocess_supermag(stime, etime, stations, savefile_name, interpolate=True,
 
 
 if __name__ == "__main__":
-    stations_list = ['YKC', 'CBB', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'FRD', 'GIM', 'FCC',
-     'FMC', 'FSP', 'SMI', 'PIN', 'RAL', 'CMO', 'IQA', 'CDC', 'GHC', 'RPB', 'LET',
-     'C06', 'C07', 'C12', 'T16', 'T22', 'T29', 'T32', 'T36', 'T38']
-    syear, eyear = 2008, 2019
+    stations_list = ['YKC', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'GIM', 'DAW', 'FCC', 'FMC',
+                     'FSP', 'SMI', 'ISL', 'PIN', 'RAL', 'RAN', 'CMO', 'IQA', 'C04', 'C06', 'C10', 'T36']
+    syear, eyear = 2009, 2019
     stime = pd.Timestamp(syear, 1, 1)
     etime = pd.Timestamp(eyear, 12, 31, 23, 59, 59)
-    preprocess_supermag(stime, etime, stations_list, f"{syear}-{eyear}_NA", interpolate=True, method="linear", limit=None)
+    preprocess_supermag(stime, etime, stations_list, f"{syear}-{eyear}", interpolate=True, method="linear", limit=None)
 
