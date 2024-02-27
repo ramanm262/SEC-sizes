@@ -12,24 +12,24 @@ import preprocessing
 
 
 # Config variables
-syear, eyear = 2008, 2019
-stations_list = ['YKC', 'CBB', 'BLC', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'FRD', 'GIM', 'FCC', 'FMC', 'FSP',
-                 'SMI', 'ISL', 'PIN', 'RAL', 'INK', 'CMO', 'IQA', 'LET',
-                 'T16', 'T32', 'T33', 'T36']
-station_coords_list = [np.array([62.48, 69.1, 64.33, 57.07, 40.13, 48.52, 48.27, 45.4, 38.2, 56.38, 58.76, 56.66,
-                                 61.76, 60.02, 53.86, 50.2, 58.22, 68.25, 64.87, 63.75, 49.64, 39.19, 49.4, 54.0,
-                                 54.71]),
-                       np.array([245.52, 255.0, 263.97, 224.67, 254.77, 236.58, 242.88, 284.45, 282.63, 265.36,
-                                 265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 226.7, 212.14, 291.48,
-                                 247.13, 240.2, 277.7, 259.1, 246.69])]
-n_sec_lat, n_sec_lon = 16, 7  # # of rows and columns respectively of SECSs that will exist in the grid
+syear, eyear = 2009, 2019
+stations_list = ['YKC', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'GIM', 'DAW', 'FCC', 'FMC',
+                 'FSP', 'SMI', 'ISL', 'PIN', 'RAL', 'RAN', 'CMO', 'IQA', 'C04', 'C06', 'C10', 'T36']
+station_coords_list = [np.array([62.48, 64.33, 54.62, 57.07, 40.13, 48.52, 48.27, 45.4, 56.38, 64.05, 58.76,
+                                 56.66, 61.76, 60.02, 53.86, 50.2, 58.22, 62.82, 64.87, 63.75, 50.06, 53.35,
+                                 47.66, 54.71]),
+                       np.array([245.52, 263.97, 246.65, 224.67, 254.77, 236.58, 242.88, 284.45, 265.36, 220.89,
+                                 265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 267.89, 212.14, 291.48,
+                                 251.74, 247.03, 245.79, 246.69])]
+n_sec_lat, n_sec_lon = 10, 35  # # of rows and columns respectively of SECSs that will exist in the grid
 n_poi_lat, n_poi_lon = 14, 32  # # of rows and columns respectively of POIs that will exist in the grid
 w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
-poi_coords_list = [np.linspace(40, 60, n_poi_lat), np.linspace(220, 290, n_poi_lon)]
-epsilon = 0.09511368053258676
+poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
+epsilon = 0.09323151264778985
 B_param = "dbn_geo"
 plot_interps = True
-plot_every_n_interps = 1000
+plot_every_n_interps = 50000
+do_metrology = False
 stats_plots_location = "stats_plots/"
 interp_plots_location = "interp_plots/"
 
@@ -55,83 +55,84 @@ def calculate_perimeter(contour, poi_coords_list, r=6378100):
     return perimeter_km
 
 
-all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", 'dbn_geo')
+all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
 
-mean_list, std_list, rms_deviation_list, mean_deviation_list, max_list, min_list = [], [], [], [], [], []
+if do_metrology:
+    mean_list, std_list, rms_deviation_list, mean_deviation_list, max_list, min_list = [], [], [], [], [], []
 
-for t in tqdm.trange(len(all_B_interps), desc="Generating statistics"):
-    B_interp = all_B_interps.iloc[t]
-    mean_list.append(np.mean(B_interp))
-    std_list.append(np.std(B_interp))
-    rms_deviation_list.append(rms_deviation(B_interp))
-    mean_deviation_list.append(mean_deviation(B_interp))
-    max_list.append(np.max(B_interp))
-    min_list.append(np.min(B_interp))
+    for t in tqdm.trange(len(all_B_interps), desc="Generating statistics"):
+        B_interp = all_B_interps.iloc[t]
+        mean_list.append(np.mean(B_interp))
+        std_list.append(np.std(B_interp))
+        rms_deviation_list.append(rms_deviation(B_interp))
+        mean_deviation_list.append(mean_deviation(B_interp))
+        max_list.append(np.max(B_interp))
+        min_list.append(np.min(B_interp))
 
-plt.hist(mean_list, bins=int(2*np.max(mean_list)/5), align="left")
-plt.title("Spatial Mean of Disturbance", fontsize=16)
-plt.xlabel("Mean Disturbance (nT)", fontsize=14)
-plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-plt.ylim(0, 10000)
-plt.yticks(fontsize=14)
-plt.xticks(fontsize=14)
-plt.tight_layout()
-plt.savefig(stats_plots_location + "mean.png")
+    plt.hist(mean_list, bins=int(2*np.max(mean_list)/5), align="left")
+    plt.title("Spatial Mean of Disturbance", fontsize=16)
+    plt.xlabel("Mean Disturbance (nT)", fontsize=14)
+    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    # plt.ylim(0, 10000)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "mean.png")
 
-plt.cla()
-plt.hist(std_list, bins=int(np.max(std_list)/5), align="left")
-plt.title("Spatial Standard Deviation of Disturbance", fontsize=16)
-plt.xlabel("Standard Deviation of Disturbance (nT)", fontsize=14)
-plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-plt.ylim(0, 5000)
-plt.yticks(fontsize=14)
-plt.xticks(fontsize=14)
-plt.tight_layout()
-plt.savefig(stats_plots_location + "std.png")
+    plt.cla()
+    plt.hist(std_list, bins=int(np.max(std_list)/5), align="left")
+    plt.title("Spatial Standard Deviation of Disturbance", fontsize=16)
+    plt.xlabel("Standard Deviation of Disturbance (nT)", fontsize=14)
+    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    # plt.ylim(0, 5000)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "std.png")
 
-plt.cla()
-plt.hist(mean_deviation_list, bins=int(np.max(mean_deviation_list)/5), align="left")
-plt.title("Spatial Mean Deviation of Disturbance", fontsize=16)
-plt.xlabel("Mean Deviation of Disturbance (nT)", fontsize=14)
-plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-plt.ylim(0, 5000)
-plt.yticks(fontsize=14)
-plt.xticks(fontsize=14)
-plt.tight_layout()
-plt.savefig(stats_plots_location + "mean_deviation.png")
+    plt.cla()
+    plt.hist(mean_deviation_list, bins=int(np.max(mean_deviation_list)/5), align="left")
+    plt.title("Spatial Mean Deviation of Disturbance", fontsize=16)
+    plt.xlabel("Mean Deviation of Disturbance (nT)", fontsize=14)
+    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    # plt.ylim(0, 5000)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "mean_deviation.png")
 
-plt.cla()
-plt.hist(rms_deviation_list, bins=int(np.max(rms_deviation_list)/5), align="left")
-plt.title("Spatial RMS Deviation of Disturbance", fontsize=16)
-plt.xlabel("RMS Deviation of Disturbance (nT)", fontsize=14)
-plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-plt.ylim(0, 5000)
-plt.yticks(fontsize=14)
-plt.xticks(fontsize=14)
-plt.tight_layout()
-plt.savefig(stats_plots_location + "rms_deviation.png")
+    plt.cla()
+    plt.hist(rms_deviation_list, bins=int(np.max(rms_deviation_list)/5), align="left")
+    plt.title("Spatial RMS Deviation of Disturbance", fontsize=16)
+    plt.xlabel("RMS Deviation of Disturbance (nT)", fontsize=14)
+    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    # plt.ylim(0, 5000)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "rms_deviation.png")
 
-plt.cla()
-plt.hist(max_list, bins=int(np.max(max_list)/5), align="left")
-plt.title("Spatial Maximum of Disturbance", fontsize=16)
-plt.xlabel("Maximum Disturbance (nT)", fontsize=14)
-plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-plt.ylim(0, 2200)
-plt.yticks(fontsize=14)
-plt.xticks(fontsize=14)
-plt.tight_layout()
-plt.savefig(stats_plots_location + "max.png")
+    plt.cla()
+    plt.hist(max_list, bins=int(np.max(max_list)/5), align="left")
+    plt.title("Spatial Maximum of Disturbance", fontsize=16)
+    plt.xlabel("Maximum Disturbance (nT)", fontsize=14)
+    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    # plt.ylim(0, 2200)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "max.png")
 
-plt.cla()
-plt.hist(min_list, bins=int(np.abs(np.min(min_list))/5), align="left")
-plt.title("Spatial Minimum of Disturbance", fontsize=16)
-plt.xlabel("Minimum Disturbance (nT)", fontsize=14)
-plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-plt.ylim(0, 2200)
-plt.yticks(fontsize=14)
-plt.xticks(fontsize=14)
-plt.tight_layout()
-plt.savefig(stats_plots_location + "min.png")
+    plt.cla()
+    plt.hist(min_list, bins=int(np.abs(np.min(min_list))/5), align="left")
+    plt.title("Spatial Minimum of Disturbance", fontsize=16)
+    plt.xlabel("Minimum Disturbance (nT)", fontsize=14)
+    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    # plt.ylim(0, 2200)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "min.png")
 
 
 station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
@@ -216,18 +217,20 @@ num_of_perimeters_list = [len(timestep) for timestep in perimeters]
 all_perimeter_sizes_list = [perimeter for timestep in perimeters for perimeter in timestep]
 
 plt.figure()
-plt.hist(num_of_perimeters_list)
+plt.hist(num_of_perimeters_list, bins=np.arange(10-0.5))
+# plt.yscale("log")
 plt.title("Number of dB 'Blobs'", fontsize=16)
 plt.xlabel("# of blobs", fontsize=14)
 plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
 plt.yticks(fontsize=14)
 plt.xticks(fontsize=14)
-plt.tight_layout()
+# plt.tight_layout()
 plt.savefig(stats_plots_location + "num_of_blobs.png")
 
 plt.figure()
 plt.hist(all_perimeter_sizes_list, bins=int(np.max(all_perimeter_sizes_list)/50), align="left")
-plt.title(f"dB Blob Sizes 2016", fontsize=16)
+# plt.yscale("log")
+plt.title(f"dB Blob Sizes {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=16)
 plt.xlabel("dB Blob Perimeter (km)", fontsize=14)
 plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
 plt.yticks(fontsize=14)
@@ -236,7 +239,7 @@ plt.xticks(fontsize=14)
 plt.tight_layout()
 plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
 
-timestamps = pd.to_datetime(pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key="dbn_geo").index,
+timestamps = pd.to_datetime(pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param).index,
                             unit='s')
 plt.figure()
 perimeter_maxes = [0]*len(perimeters)
