@@ -55,15 +55,14 @@ def calculate_perimeter(contour, poi_coords_list, r=6378100):
     return perimeter_km
 
 
-# def calculate_aspect_ratio(contour, poi_coords_list, r=6378100):
-#     rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
-#     rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
-#     contour[:, 0], contour[:, 1] = (contour[:, 0] * np.pi / 180 + poi_coords_list[0][0] * rad_between_rows,
-#                                     contour[:, 1] * np.pi / 180 + poi_coords_list[1][0] * rad_between_cols)
-#     hd_matrix = haversine_distances(contour, contour)  # Contains the distances between each pair of vertices
-#     # Use only the distances between each successive vertex
-#     perimeter_km = np.sum(np.diag(hd_matrix, k=1)) * r / 1000
-#     return perimeter_km
+def calculate_aspect_ratio(contour, poi_coords_list):
+    rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
+    rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
+    contour[:, 0], contour[:, 1] = (contour[:, 0] * rad_between_rows + poi_coords_list[0][0] * np.pi / 180,
+                                    contour[:, 1] * rad_between_cols + poi_coords_list[1][0] * np.pi / 180)
+    # Aspect ratio = longitudinal extent / latitudinal extent
+    aspect_ratio = (max(contour[:, 1]) - min(contour[:, 1])) / (max(contour[:, 0]) - min(contour[:, 0]))
+    return aspect_ratio
 
 
 all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
@@ -183,6 +182,7 @@ mag_data = preprocessing.load_supermag(stations_list, syear, eyear, B_param, sav
 
 anomaly_coords = []
 perimeters = []
+aspect_ratios = []
 for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
     heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
 
@@ -207,15 +207,18 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
     contours = measure.find_contours(heatmap_data)  # Each element of list is a list of coords in row, col format (not degrees)
 
     this_perimeters = []
+    this_aspect_ratios = []
     for contour in contours:
         this_contour_lons = poi_lons_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
         this_contour_lats = poi_lats_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
         if plot_interps and (timestep % plot_every_n_interps == 0):  # Only plot if plotting is enabled
             ax2.plot(this_contour_lons, this_contour_lats, linewidth=4, color='black', transform=ccrs.PlateCarree())
         if contour[0, 0] == contour[-1, 0] and contour[0, 1] == contour[-1, 1]:  # If contour is closed
-            this_perimeters.append(calculate_perimeter(contour.copy(), poi_coords_list=poi_coords_list))
             p = calculate_perimeter(contour.copy(), poi_coords_list=poi_coords_list)
-            if p > 1850 and p < 2000:
+            ar = calculate_aspect_ratio(contour.copy(), poi_coords_list=poi_coords_list)
+            this_perimeters.append(p)
+            this_aspect_ratios.append(ar)
+            if p > 1640 and p < 1800:
                 anomaly_coords.append([np.mean(this_contour_lats), np.mean(this_contour_lons)])
             else:
                 anomaly_coords.append([np.nan, np.nan])
@@ -223,32 +226,45 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
     if plot_interps and (timestep % plot_every_n_interps == 0):
         plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.png")
     perimeters.append(this_perimeters)
+    aspect_ratios.append(this_aspect_ratios)
 
 num_of_perimeters_list = [len(timestep) for timestep in perimeters]
 all_perimeter_sizes_list = [perimeter for timestep in perimeters for perimeter in timestep]
+all_ars_list = [ar for timestep in aspect_ratios for ar in timestep]
 
 plt.figure()
 plt.hist(num_of_perimeters_list, bins=np.arange(10-0.5))
-# plt.yscale("log")
-plt.title("Number of dB 'Blobs'", fontsize=16)
-plt.xlabel("# of blobs", fontsize=14)
+plt.yscale("log")
+plt.title("Number Identified LMPs", fontsize=16)
+plt.xlabel("# of LMPs", fontsize=14)
 plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
 plt.yticks(fontsize=14)
 plt.xticks(fontsize=14)
-# plt.tight_layout()
+plt.tight_layout()
 plt.savefig(stats_plots_location + "num_of_blobs.png")
 
 plt.figure()
 plt.hist(all_perimeter_sizes_list, bins=int(np.max(all_perimeter_sizes_list)/50), align="left")
-# plt.yscale("log")
-plt.title(f"dB Blob Sizes {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=16)
-plt.xlabel("dB Blob Perimeter (km)", fontsize=14)
+plt.yscale("log")
+plt.title(f"LMP Sizes {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=16)
+plt.xlabel("LMP Perimeter (km)", fontsize=14)
 plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
 plt.yticks(fontsize=14)
 plt.xticks(fontsize=14)
-# plt.xlim(1650,2400)
+# plt.xlim(1250,2100)
 plt.tight_layout()
 plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
+
+plt.figure()
+plt.hist(np.log10(all_ars_list), bins=50, align="left")
+plt.yscale("log")
+plt.title(f"LMP Aspect Ratios {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=16)
+plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
+plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+plt.yticks(fontsize=14)
+plt.xticks(fontsize=14)
+plt.tight_layout()
+plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
 
 timestamps = pd.to_datetime(pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param).index,
                             unit='s')
@@ -257,7 +273,6 @@ perimeter_maxes = [0]*len(perimeters)
 for timestep in range(len(perimeters)):
     if len(perimeters[timestep]) > 0:
         perimeter_maxes[timestep] = np.max(perimeters[timestep])
-
 plt.plot(timestamps, perimeter_maxes)
 plt.title(f"dB Blob Sizes {syear}{('-'+str(eyear))*(syear!=eyear)} (Example Storm)", fontsize=16)
 plt.xlabel("Time", fontsize=14)
@@ -271,7 +286,7 @@ plt.savefig(stats_plots_location + "blob_size_timeseries.png")
 plt.cla()
 plt.figure()
 fig, ax = plt.subplots(1, 1, figsize=(10, 5), subplot_kw={"projection": projection})
-ax.set_extent((w_lon, e_lon-5, s_lat, n_lat))
+ax.set_extent((w_lon+10, e_lon-10, s_lat+10, n_lat-5))
 ax.set_title(f'Locations of Anomalies', fontsize=20)
 centroids = ax.scatter([coords[1] for coords in anomaly_coords],
            [coords[0] for coords in anomaly_coords],
