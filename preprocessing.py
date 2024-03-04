@@ -1,5 +1,5 @@
-import pandas as pd
 import datetime as dt
+import pandas as pd
 import tqdm
 
 
@@ -53,8 +53,17 @@ def load_supermag(stations_list, syear, eyear, B_param="dbn_geo", storm_time_onl
     return mag_data
 
 
+def load_omni(syear, eyear, data_path, feature="SYM_H"):
+    omni_data = pd.read_feather(data_path + f"omniData-{syear}-{eyear}-interp-None.feather")
+    omni_data = omni_data.rename(columns={"Epoch": "Date_UTC"})
+    omni_data.set_index("Date_UTC", inplace=True, drop=True)
+    omni_data = omni_data[[feature]]  # Only use these features
+    return omni_data
+
 if __name__ == "__main__":
+    syear = 2009
+    eyear = 2019
     stations_list = ['YKC', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'GIM', 'DAW', 'FCC', 'FMC',
                      'FSP', 'SMI', 'ISL', 'PIN', 'RAL', 'RAN', 'CMO', 'IQA', 'C04', 'C06', 'C10', 'T36']
-    load_supermag(stations_list, 2009, 2019, B_param="dbn_geo", saving=True)
+    load_supermag(stations_list, syear, eyear, B_param="dbn_geo", saving=True)
     print("Done")

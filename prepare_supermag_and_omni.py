@@ -3,7 +3,8 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 import tqdm
-import cdflib
+import glob
+from preprocessing_fns import *
 
 
 def preprocess_supermag(stime, etime, stations, savefile_name, interpolate=True, method="linear", limit=None):
@@ -50,7 +51,49 @@ def preprocess_supermag(stime, etime, stations, savefile_name, interpolate=True,
 
         del mag_data
 
-    print("Done preprocessing!")
+    print(f"Done preprocessing SuperMAG from {syear} to {eyear}\n!")
+
+
+def preprocess_omni(syear, eyear, data_dir,
+                     interpolate=True, method='linear', limit=None, to_drop=[]):
+    start_time = pd.Timestamp(syear, 1, 1)
+    end_time = pd.Timestamp(eyear, 12, 31, 23, 59, 59)
+
+    omni_files = glob.glob(data_dir + 'omni/hro_1min/*/*.cdf', recursive=True)
+    o = []
+    for fil in tqdm.tqdm(sorted(omni_files), desc="Loading OMNI files"):
+        cdf = omnicdf2dataframe(fil)
+        o.append(cdf)
+
+    omni_data = pd.concat(o, axis=0, ignore_index=True)
+    omni_data.index = omni_data.Epoch
+
+    del o
+
+    # Select the temporal subset to export
+    omni_data = omni_data[start_time:end_time]
+
+    # Rename some variables to avoid conflicts
+    omni_data.rename(columns={'E': 'E_Field'}, inplace=True)
+    omni_data.rename(columns={'F': 'B_Total'}, inplace=True)
+
+    # Convert bad numbers to np.nan
+    bad_omni_to_nan(omni_data);
+
+    # Drop unwanted columns
+    omni_data = omni_data.drop(to_drop, axis=1)
+
+    # Process the data. Right now interpolation on all missing data. May change later
+    if interpolate:
+        for param in omni_data.columns:
+            omni_data[param] = omni_data[param].interpolate(method=method, limit=limit)
+
+    # Export to feather format
+    print(omni_data.info())
+    omni_data.reset_index(drop=True).to_feather(data_dir + f'ramans_files/omni-feather/omniData-{syear}-{eyear}-interp-{limit}.feather')
+
+    print(f'Finished pre-processing OMNI data from {syear} to {eyear}\n')
+    return omni_data
 
 
 if __name__ == "__main__":
@@ -59,5 +102,5 @@ if __name__ == "__main__":
     syear, eyear = 2009, 2019
     stime = pd.Timestamp(syear, 1, 1)
     etime = pd.Timestamp(eyear, 12, 31, 23, 59, 59)
-    preprocess_supermag(stime, etime, stations_list, f"{syear}-{eyear}", interpolate=True, method="linear", limit=None)
-
+    # preprocess_supermag(stime, etime, stations_list, f"{syear}-{eyear}", interpolate=True, method="linear", limit=None)
+    preprocess_omni(syear, eyear, "/data/", interpolate=True, method='linear', limit=None, to_drop=[])

@@ -266,20 +266,32 @@ plt.xticks(fontsize=14)
 plt.tight_layout()
 plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
 
+stime, etime = pd.to_datetime("2016-07-25 00:00:00"), pd.to_datetime("2016-07-27 00:00:00")
 timestamps = pd.to_datetime(pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param).index,
                             unit='s')
+index_data = preprocessing.load_omni(syear, eyear, "/data/ramans_files/omni-feather/", feature="SYM_H")
 plt.figure()
+fig, perim_ax = plt.subplots(1, 1, figsize=(10, 5))
+index_ax = perim_ax.twinx()
 perimeter_maxes = [0]*len(perimeters)
 for timestep in range(len(perimeters)):
     if len(perimeters[timestep]) > 0:
         perimeter_maxes[timestep] = np.max(perimeters[timestep])
-plt.plot(timestamps, perimeter_maxes)
-plt.title(f"dB Blob Sizes {syear}{('-'+str(eyear))*(syear!=eyear)} (Example Storm)", fontsize=16)
-plt.xlabel("Time", fontsize=14)
-plt.ylabel(f"Perimeter of largest blob (km)", fontsize=14)
-plt.yticks(fontsize=14)
-plt.xticks(fontsize=14, rotation=40)
-plt.xlim(pd.to_datetime("2016-09-01 12:00:00"), pd.to_datetime("2016-09-03 04:00:00"))
+perimeter_maxes = pd.DataFrame(perimeter_maxes, index=timestamps)
+timestamps = timestamps[(timestamps >= stime) & (timestamps <= etime)]
+perimeter_maxes = perimeter_maxes[(perimeter_maxes.index >= stime) & (perimeter_maxes.index <= etime)]
+index_data = index_data.loc[perimeter_maxes.index]
+perim_ax.plot(timestamps, perimeter_maxes, c="black", label="Largest LMP Perimeter")
+index_ax.plot(timestamps, index_data, c="green", label="SYM-H")
+fig.suptitle(f"LMP Sizes (Example Storm)", fontsize=16)
+perim_ax.set_xlabel("Time", fontsize=14)
+perim_ax.set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
+index_ax.set_ylabel("SYM-H Index (nT)", fontsize=14, color="green")
+perim_ax.tick_params(axis='x', labelsize=14, labelrotation=40)
+perim_ax.tick_params(axis='y', labelsize=14)
+index_ax.tick_params(axis='y', labelcolor="green", labelsize=14)
+# plt.xlim(stime, etime)
+# plt.legend(fontsize=14)
 plt.tight_layout()
 plt.savefig(stats_plots_location + "blob_size_timeseries.png")
 
@@ -296,7 +308,6 @@ station_scatter = ax.scatter(station_coords_list[1], station_coords_list[0], c="
                               s=160, transform=ccrs.PlateCarree(), label="Magnetometer Stations")
 rect = ax.add_patch(patches.Rectangle((230.5, 45.5), 50, 10, facecolor="#1f77b4",
                          alpha=0.2, transform=ccrs.PlateCarree(), label="Current System Grid Extent"))
-
 plt.legend(loc="upper left", prop={'size': 14}, handles=[centroids, station_scatter, rect])
 ax.gridlines(draw_labels=False)
 ax.coastlines()
