@@ -6,6 +6,7 @@ import cartopy.crs as ccrs
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import haversine_distances
+from scipy.stats import pearsonr
 from skimage import measure
 import tqdm
 import preprocessing
@@ -28,7 +29,7 @@ poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_l
 epsilon = 0.09323151264778985
 B_param = "dbn_geo"
 plot_interps = True
-plot_every_n_interps = 50000
+plot_every_n_interps = 10000
 do_metrology = False
 stats_plots_location = "stats_plots/"
 interp_plots_location = "interp_plots/"
@@ -65,6 +66,11 @@ def calculate_aspect_ratio(contour, poi_coords_list):
     return aspect_ratio
 
 
+def correlation_with_index(param_series, index_series):
+    combined_df = pd.concat([param_series, index_series], axis=1)
+    combined_df = combined_df[combined_df[0] != 0]
+    return pearsonr(combined_df.iloc[:, 0], combined_df.iloc[:, 1])[0]
+
 all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
 
 if do_metrology:
@@ -80,6 +86,7 @@ if do_metrology:
         min_list.append(np.min(B_interp))
 
     plt.hist(mean_list, bins=int(2*np.max(mean_list)/5), align="left")
+    plt.yscale("log")
     plt.title("Spatial Mean of Disturbance", fontsize=16)
     plt.xlabel("Mean Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
@@ -91,6 +98,7 @@ if do_metrology:
 
     plt.cla()
     plt.hist(std_list, bins=int(np.max(std_list)/5), align="left")
+    plt.yscale("log")
     plt.title("Spatial Standard Deviation of Disturbance", fontsize=16)
     plt.xlabel("Standard Deviation of Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
@@ -102,6 +110,7 @@ if do_metrology:
 
     plt.cla()
     plt.hist(mean_deviation_list, bins=int(np.max(mean_deviation_list)/5), align="left")
+    plt.yscale("log")
     plt.title("Spatial Mean Deviation of Disturbance", fontsize=16)
     plt.xlabel("Mean Deviation of Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
@@ -113,6 +122,7 @@ if do_metrology:
 
     plt.cla()
     plt.hist(rms_deviation_list, bins=int(np.max(rms_deviation_list)/5), align="left")
+    plt.yscale("log")
     plt.title("Spatial RMS Deviation of Disturbance", fontsize=16)
     plt.xlabel("RMS Deviation of Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
@@ -124,24 +134,32 @@ if do_metrology:
 
     plt.cla()
     plt.hist(max_list, bins=int(np.max(max_list)/5), align="left")
+    plt.yscale("log")
     plt.title("Spatial Maximum of Disturbance", fontsize=16)
     plt.xlabel("Maximum Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    percentile = np.percentile(max_list, 67.5)
+    plt.axvline(percentile, color='k', linestyle='dashed', label=f"{percentile:.2f}")
     # plt.ylim(0, 2200)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
+    plt.legend()
     plt.savefig(stats_plots_location + "max.png")
 
     plt.cla()
     plt.hist(min_list, bins=int(np.abs(np.min(min_list))/5), align="left")
+    plt.yscale("log")
     plt.title("Spatial Minimum of Disturbance", fontsize=16)
     plt.xlabel("Minimum Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    percentile = np.percentile(min_list, 32.5)
+    plt.axvline(percentile, color='k', linestyle='dashed', label=f"{percentile:.2f}")
     # plt.ylim(0, 2200)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
+    plt.legend()
     plt.savefig(stats_plots_location + "min.png")
 
 
@@ -171,7 +189,7 @@ plt.cla()
 color_map = cm.coolwarm
 divider = make_axes_locatable(ax2)
 cax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
-norm = plt.cm.colors.Normalize(vmin=np.min(all_B_interps), vmax=np.max(all_B_interps))
+norm = plt.cm.colors.TwoSlopeNorm(vcenter=0, vmin=np.percentile(all_B_interps, 5), vmax=np.percentile(all_B_interps, 95))
 scalarmappable = plt.cm.ScalarMappable(norm=norm, cmap=color_map)
 station_scatter = ax1.scatter(station_coords_list[1], station_coords_list[0], c=np.random.rand(len(station_coords_list[0])),
                               s=80, cmap=color_map, transform=ccrs.PlateCarree())
@@ -179,10 +197,12 @@ ax1.set_title("Locations of Stations", fontsize=16)
 
 # Load SuperMAG data for comparison to interpolations
 mag_data = preprocessing.load_supermag(stations_list, syear, eyear, B_param, saving=False)
+assert len(mag_data) == len(all_B_interps)
 
 anomaly_coords = []
 perimeters = []
 aspect_ratios = []
+contour_level = 77 # np.percentile(max_list, 90)
 for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
     heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
 
@@ -191,11 +211,11 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
         ax2.cla()
         ax1.scatter(station_coords_list[1], station_coords_list[0],
                                       c=mag_data.iloc[timestep],
-                                      s=80, cmap=color_map, transform=ccrs.PlateCarree())
+                                      s=80, cmap=color_map, norm=norm, transform=ccrs.PlateCarree())
         ax1.gridlines(draw_labels=False)
         ax1.coastlines()
-        ax2.scatter(np.array(all_poi_lons) * 180 / np.pi, all_poi_lats, c=all_B_interps.iloc[timestep], cmap=color_map,
-                    s=80, marker='s', transform=ccrs.PlateCarree())
+        ax2.scatter(np.array(all_poi_lons) * 180 / np.pi, all_poi_lats, c=-all_B_interps.iloc[timestep], cmap=color_map,
+                    s=80, marker='s', norm=norm, transform=ccrs.PlateCarree())
         ax2.set_extent((w_lon, e_lon, s_lat, n_lat))
         ax2.gridlines(draw_labels=False)
         ax2.coastlines()
@@ -204,7 +224,7 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
         cb.ax.set_title('nT', fontsize=16)
         cb.ax.tick_params(labelsize=14)
 
-    contours = measure.find_contours(heatmap_data)  # Each element of list is a list of coords in row, col format (not degrees)
+    contours = measure.find_contours(heatmap_data, level=contour_level)  # Each element of list is a list of coords in row, col format (not degrees)
 
     this_perimeters = []
     this_aspect_ratios = []
@@ -218,7 +238,7 @@ for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
             ar = calculate_aspect_ratio(contour.copy(), poi_coords_list=poi_coords_list)
             this_perimeters.append(p)
             this_aspect_ratios.append(ar)
-            if p > 1640 and p < 1800:
+            if p > 2300 and p < 2900:
                 anomaly_coords.append([np.mean(this_contour_lats), np.mean(this_contour_lons)])
             else:
                 anomaly_coords.append([np.nan, np.nan])
@@ -251,7 +271,7 @@ plt.xlabel("LMP Perimeter (km)", fontsize=14)
 plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
 plt.yticks(fontsize=14)
 plt.xticks(fontsize=14)
-# plt.xlim(1250,2100)
+# plt.xlim(2300,2900)
 plt.tight_layout()
 plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
 
@@ -269,7 +289,7 @@ plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png"
 stime, etime = pd.to_datetime("2016-07-25 00:00:00"), pd.to_datetime("2016-07-27 00:00:00")
 timestamps = pd.to_datetime(pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param).index,
                             unit='s')
-index_data = preprocessing.load_omni(syear, eyear, "/data/ramans_files/omni-feather/", feature="SYM_H")
+index_data = preprocessing.load_omni(syear, eyear, "/data/ramans_files/omni-feather/", feature="AE_INDEX")
 plt.figure()
 fig, perim_ax = plt.subplots(1, 1, figsize=(10, 5))
 index_ax = perim_ax.twinx()
@@ -282,11 +302,11 @@ timestamps = timestamps[(timestamps >= stime) & (timestamps <= etime)]
 perimeter_maxes = perimeter_maxes[(perimeter_maxes.index >= stime) & (perimeter_maxes.index <= etime)]
 index_data = index_data.loc[perimeter_maxes.index]
 perim_ax.plot(timestamps, perimeter_maxes, c="black", label="Largest LMP Perimeter")
-index_ax.plot(timestamps, index_data, c="green", label="SYM-H")
-fig.suptitle(f"LMP Sizes (Example Storm)", fontsize=16)
+index_ax.plot(timestamps, index_data, c="green", label="AE Index")
+fig.suptitle(f"LMP Sizes (Example Storm) (r={correlation_with_index(perimeter_maxes, index_data)})", fontsize=16)
 perim_ax.set_xlabel("Time", fontsize=14)
 perim_ax.set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
-index_ax.set_ylabel("SYM-H Index (nT)", fontsize=14, color="green")
+index_ax.set_ylabel("AE Index (nT)", fontsize=14, color="green")
 perim_ax.tick_params(axis='x', labelsize=14, labelrotation=40)
 perim_ax.tick_params(axis='y', labelsize=14)
 index_ax.tick_params(axis='y', labelcolor="green", labelsize=14)
