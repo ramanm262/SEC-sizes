@@ -24,6 +24,8 @@ def mean_deviation(B_interp_vector):
 if __name__ == "__main__":
 
     all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
+    # Remove timestamps that are double-counted by immediately successive storms
+    all_B_interps.drop_duplicates(inplace=True)
 
     mean_list, std_list, rms_deviation_list, mean_deviation_list, max_list, min_list = [], [], [], [], [], []
 
@@ -89,7 +91,7 @@ if __name__ == "__main__":
     plt.title("Spatial Maximum of Disturbance", fontsize=16)
     plt.xlabel("Maximum Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    percentile = np.percentile(max_list, 67.5)
+    percentile = np.percentile(max_list, 50)
     plt.axvline(percentile, color='k', linestyle='dashed', label=f"{percentile:.2f}")
     # plt.ylim(0, 2200)
     plt.yticks(fontsize=14)
@@ -104,7 +106,7 @@ if __name__ == "__main__":
     plt.title("Spatial Minimum of Disturbance", fontsize=16)
     plt.xlabel("Minimum Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    percentile = np.percentile(min_list, 32.5)
+    percentile = np.percentile(min_list, 50)
     plt.axvline(percentile, color='k', linestyle='dashed', label=f"{percentile:.2f}")
     # plt.ylim(0, 2200)
     plt.yticks(fontsize=14)
