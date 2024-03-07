@@ -28,8 +28,10 @@ w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
 poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
 epsilon = 0.09323151264778985
 B_param = "dbn_geo"
+omni_feature = "AE_INDEX"
 plot_interps = True
 plot_every_n_interps = 5000
+solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
 stats_plots_location = "stats_plots/"
 interp_plots_location = "interp_plots/"
 
@@ -63,7 +65,6 @@ def correlation_with_index(param_series, index_series):
 
 if __name__ == "__main__":
     all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
-
 
     station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
     station_geolons = np.pi / 180 * station_coords_list[1]
@@ -99,14 +100,33 @@ if __name__ == "__main__":
                                   transform=ccrs.PlateCarree())
     ax1.set_title("Locations of Stations", fontsize=16)
 
-    # Load SuperMAG data for comparison to interpolations
+    # Load SuperMAG and geomagnetic index data for comparison to interpolations
     mag_data = preprocessing.load_supermag(stations_list, syear, eyear, B_param, saving=False)
+    mag_data.drop_duplicates(inplace=True)  # Remove timestamps that are double-counted by immediately successive storms
+    all_B_interps.drop_duplicates(inplace=True)
     assert len(mag_data) == len(all_B_interps)
+    all_B_interps.index = mag_data.index
+    index_data = preprocessing.load_omni(syear, eyear, "/data/ramans_files/omni-feather/", feature=omni_feature)
+
+    if solar_cycle_phase == "minimum":
+        print("Only using data from the low part of the solar cycle")
+        all_B_interps = all_B_interps.loc[(all_B_interps.index < pd.to_datetime("2011-01-01")) |
+                                          (all_B_interps.index >= pd.to_datetime("2016-01-01"))]
+        syear, eyear = "Solar minimum", "Solar minimum"  # Hacky way to make plot titles and axis labels say the right thing
+    elif solar_cycle_phase == "maximum":
+        print("Only using data from the high part of the solar cycle")
+        all_B_interps = all_B_interps.loc[(all_B_interps.index >= pd.to_datetime("2011-01-01")) &
+                                          (all_B_interps.index < pd.to_datetime("2016-01-01"))]
+        syear, eyear = "Solar maximum", "Solar maximum"
+    else:
+        print("Using data from the entire solar cycle")
+    mag_data = mag_data.loc[all_B_interps.index]
+    # index_data is pared to the same index later in this script
 
     anomaly_coords = []
     perimeters = []
     aspect_ratios = []
-    contour_level = 77  # np.percentile(max_list, 90)
+    contour_level = 49.01  # np.percentile(max_list, 90)
     for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
         heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
 
@@ -118,8 +138,8 @@ if __name__ == "__main__":
                         s=80, cmap=color_map, norm=norm, transform=ccrs.PlateCarree())
             ax1.gridlines(draw_labels=False)
             ax1.coastlines()
-            ax2.scatter(np.array(all_poi_lons) * 180 / np.pi, all_poi_lats, c=-all_B_interps.iloc[timestep], cmap=color_map,
-                        s=80, marker='s', norm=norm, transform=ccrs.PlateCarree())
+            ax2.scatter(np.array(all_poi_lons) * 180 / np.pi, all_poi_lats, c=-all_B_interps.iloc[timestep],
+                        cmap=color_map, s=80, marker='s', norm=norm, transform=ccrs.PlateCarree())
             ax2.set_extent((w_lon, e_lon, s_lat, n_lat))
             ax2.gridlines(draw_labels=False)
             ax2.coastlines()
@@ -194,34 +214,36 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
 
-    stime, etime = pd.to_datetime("2016-07-25 00:00:00"), pd.to_datetime("2016-07-27 00:00:00")
-    timestamps = pd.to_datetime(pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param).index,
-                                unit='s')
-    index_data = preprocessing.load_omni(syear, eyear, "/data/ramans_files/omni-feather/", feature="AE_INDEX")
-    plt.figure()
-    fig, perim_ax = plt.subplots(1, 1, figsize=(10, 5))
-    index_ax = perim_ax.twinx()
-    perimeter_maxes = [0]*len(perimeters)
-    for timestep in range(len(perimeters)):
-        if len(perimeters[timestep]) > 0:
-            perimeter_maxes[timestep] = np.max(perimeters[timestep])
-    perimeter_maxes = pd.DataFrame(perimeter_maxes, index=timestamps)
-    timestamps = timestamps[(timestamps >= stime) & (timestamps <= etime)]
-    perimeter_maxes = perimeter_maxes[(perimeter_maxes.index >= stime) & (perimeter_maxes.index <= etime)]
-    index_data = index_data.loc[perimeter_maxes.index]
-    perim_ax.plot(timestamps, perimeter_maxes, c="black", label="Largest LMP Perimeter")
-    index_ax.plot(timestamps, index_data, c="green", label="AE Index")
-    fig.suptitle(f"LMP Sizes (Example Storm) (r={correlation_with_index(perimeter_maxes, index_data)})", fontsize=16)
-    perim_ax.set_xlabel("Time", fontsize=14)
-    perim_ax.set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
-    index_ax.set_ylabel("AE Index (nT)", fontsize=14, color="green")
-    perim_ax.tick_params(axis='x', labelsize=14, labelrotation=40)
-    perim_ax.tick_params(axis='y', labelsize=14)
-    index_ax.tick_params(axis='y', labelcolor="green", labelsize=14)
-    # plt.xlim(stime, etime)
-    # plt.legend(fontsize=14)
-    plt.tight_layout()
-    plt.savefig(stats_plots_location + "blob_size_timeseries.png")
+    try:
+        stime, etime = pd.to_datetime("2015-07-05 00:00:00"), pd.to_datetime("2015-07-07 00:00:00")
+        timestamps = mag_data.index
+        plt.figure()
+        fig, perim_ax = plt.subplots(1, 1, figsize=(10, 5))
+        index_ax = perim_ax.twinx()
+        perimeter_maxes = [0]*len(perimeters)
+        for timestep in range(len(perimeters)):
+            if len(perimeters[timestep]) > 0:
+                perimeter_maxes[timestep] = np.max(perimeters[timestep])
+        perimeter_maxes = pd.DataFrame(perimeter_maxes, index=timestamps)
+        timestamps = timestamps[(timestamps >= stime) & (timestamps <= etime)]
+        perimeter_maxes = perimeter_maxes[(perimeter_maxes.index >= stime) & (perimeter_maxes.index <= etime)]
+        index_data = index_data.loc[perimeter_maxes.index]
+        perim_ax.plot(timestamps, perimeter_maxes, c="black", label="Largest LMP Perimeter")
+        index_ax.plot(timestamps, index_data, c="green", label="AE Index")
+        fig.suptitle(f"LMP Sizes (Example Storm) (r={correlation_with_index(perimeter_maxes, index_data)})", fontsize=16)
+        perim_ax.set_xlabel("Time", fontsize=14)
+        perim_ax.set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
+        index_ax.set_ylabel("AE Index (nT)", fontsize=14, color="green")
+        perim_ax.tick_params(axis='x', labelsize=14, labelrotation=40)
+        perim_ax.tick_params(axis='y', labelsize=14)
+        index_ax.tick_params(axis='y', labelcolor="green", labelsize=14)
+        # plt.xlim(stime, etime)
+        # plt.legend(fontsize=14)
+        plt.tight_layout()
+        plt.savefig(stats_plots_location + "blob_size_timeseries.png")
+    except ValueError:
+        print('#'*8+"\nWarning!\nSkipping example storm plot because there is no data for it.\n"
+                    "Ensure the storm dates solar_cycle_phase are set correctly.\n"+'#'*8)
 
     plt.cla()
     plt.figure()
