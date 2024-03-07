@@ -12,30 +12,6 @@ import tqdm
 import preprocessing
 
 
-# Config variables
-syear, eyear = 2009, 2019
-stations_list = ['YKC', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'GIM', 'DAW', 'FCC', 'FMC',
-                 'FSP', 'SMI', 'ISL', 'PIN', 'RAL', 'RAN', 'CMO', 'IQA', 'C04', 'C06', 'C10', 'T36']
-station_coords_list = [np.array([62.48, 64.33, 54.62, 57.07, 40.13, 48.52, 48.27, 45.4, 56.38, 64.05, 58.76,
-                                 56.66, 61.76, 60.02, 53.86, 50.2, 58.22, 62.82, 64.87, 63.75, 50.06, 53.35,
-                                 47.66, 54.71]),
-                       np.array([245.52, 263.97, 246.65, 224.67, 254.77, 236.58, 242.88, 284.45, 265.36, 220.89,
-                                 265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 267.89, 212.14, 291.48,
-                                 251.74, 247.03, 245.79, 246.69])]
-n_sec_lat, n_sec_lon = 10, 35  # # of rows and columns respectively of SECSs that will exist in the grid
-n_poi_lat, n_poi_lon = 14, 32  # # of rows and columns respectively of POIs that will exist in the grid
-w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
-poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
-epsilon = 0.09323151264778985
-B_param = "dbn_geo"
-omni_feature = "AE_INDEX"
-plot_interps = True
-plot_every_n_interps = 5000
-solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
-stats_plots_location = "stats_plots/"
-interp_plots_location = "interp_plots/"
-
-
 def calculate_perimeter(contour, poi_coords_list, r=6378100):
     rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
     rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
@@ -63,7 +39,90 @@ def correlation_with_index(param_series, index_series):
     return pearsonr(combined_df.iloc[:, 0], combined_df.iloc[:, 1])[0]
 
 
-if __name__ == "__main__":
+def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log_y=True):
+    num_of_variables = (len(num_blobs_full) > 0) + (len(num_blobs_min) > 0) + (len(num_blobs_max) > 0)
+    assert num_of_variables > 0
+    plt.figure()
+    # plt.hist(num_blobs_full, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Full Solar Cycle")
+    # plt.hist(num_blobs_min, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Solar Minimum")
+    # plt.hist(num_blobs_max, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Solar Maximum")
+    plt.hist([num_blobs_full, num_blobs_min, num_blobs_max], bins=np.arange(8),
+             label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="mid")
+    if log_y:
+        plt.yscale("log")
+    plt.title("Number of Identified LMPs", fontsize=16)
+    plt.xlabel("# of LMPs", fontsize=14)
+    plt.ylabel("# of occurrences", fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.legend(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "num_of_blobs.png")
+
+
+def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
+    num_of_variables = (len(sizes_full) > 0) + (len(sizes_min) > 0) + (len(sizes_max) > 0)
+    assert num_of_variables > 0
+    plt.figure()
+    try:
+        num_bins = int(np.max(sizes_full)/50)
+    except:
+        try:
+            num_bins = int(np.max(sizes_min)/50)
+        except:
+            num_bins = int(np.max(sizes_max)/50)
+    plt.hist(sizes_full, bins=num_bins, alpha=1/num_of_variables, label="Full Solar Cycle", align="left")
+    plt.hist(sizes_min, bins=num_bins, alpha=1/num_of_variables, label="Solar Minimum", align="left")
+    plt.hist(sizes_max, bins=num_bins, alpha=1/num_of_variables, label="Solar Maximum", align="left")
+    if log_y:
+        plt.yscale("log")
+    plt.title("LMP Sizes", fontsize=16)
+    plt.xlabel("LMP Perimeter (km)", fontsize=14)
+    plt.ylabel("# of occurrences", fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.legend(fontsize=14)
+    # plt.xlim(2300,2900)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
+
+
+def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
+    num_of_variables = (len(ars_full) > 0) + (len(ars_min) > 0) + (len(ars_max) > 0)
+    assert num_of_variables > 0
+    plt.figure()
+    plt.hist(np.log10(ars_full), bins=50, alpha=1/num_of_variables, label="Full Solar Cycle", align="left")
+    plt.hist(np.log10(ars_min), bins=50, alpha=1/num_of_variables, label="Solar Minimum", align="left")
+    plt.hist(np.log10(ars_max), bins=50, alpha=1/num_of_variables, label="Solar Maximum", align="left")
+    if log_y:
+        plt.yscale("log")
+    plt.title("LMP Aspect Ratios", fontsize=16)
+    plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
+    plt.ylabel("# of occurrences", fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.legend(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
+
+
+def stats_analysis(config_dict):
+    syear, eyear = config_dict["syear"], config_dict["eyear"]
+    stations_list = config_dict["stations_list"]
+    station_coords_list = config_dict["station_coords_list"]
+    n_sec_lat, n_sec_lon = config_dict["n_sec_lat"], config_dict["n_sec_lon"]
+    n_poi_lat, n_poi_lon = config_dict["n_poi_lat"], config_dict["n_poi_lon"]
+    w_lon, e_lon, s_lat, n_lat = config_dict["w_lon"], config_dict["e_lon"], config_dict["s_lat"], config_dict["n_lat"]
+    poi_coords_list = config_dict["poi_coords_list"]
+    epsilon = config_dict["epsilon"]
+    B_param = config_dict["B_param"]
+    omni_feature = config_dict["omni_feature"]
+    plot_interps = config_dict["plot_interps"]
+    plot_every_n_interps = config_dict["plot_every_n_interps"]
+    solar_cycle_phase = config_dict["solar_cycle_phase"]
+    stats_plots_location = config_dict["stats_plots_location"]
+    interp_plots_location = config_dict["interp_plots_location"]
+
     all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
 
     station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
@@ -127,7 +186,8 @@ if __name__ == "__main__":
     perimeters = []
     aspect_ratios = []
     contour_level = 49.01  # np.percentile(max_list, 90)
-    for timestep in tqdm.trange(len(all_B_interps), desc="Generating heatmaps"):
+    for timestep in tqdm.trange(len(all_B_interps),
+                                desc=f'Generating heatmaps for solar cycle phase "{solar_cycle_phase}"'):
         heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
 
         if plot_interps and (timestep % plot_every_n_interps == 0):
@@ -173,46 +233,9 @@ if __name__ == "__main__":
         perimeters.append(this_perimeters)
         aspect_ratios.append(this_aspect_ratios)
 
-    if plot_interps:
-        print(f"Your interpolation heatmaps are ready in {stats_plots_location}")
-
     num_of_perimeters_list = [len(timestep) for timestep in perimeters]
     all_perimeter_sizes_list = [perimeter for timestep in perimeters for perimeter in timestep]
     all_ars_list = [ar for timestep in aspect_ratios for ar in timestep]
-
-    plt.figure()
-    plt.hist(num_of_perimeters_list, bins=np.arange(10-0.5))
-    plt.yscale("log")
-    plt.title("Number Identified LMPs", fontsize=16)
-    plt.xlabel("# of LMPs", fontsize=14)
-    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xticks(fontsize=14)
-    plt.tight_layout()
-    plt.savefig(stats_plots_location + "num_of_blobs.png")
-
-    plt.figure()
-    plt.hist(all_perimeter_sizes_list, bins=int(np.max(all_perimeter_sizes_list)/50), align="left")
-    plt.yscale("log")
-    plt.title(f"LMP Sizes {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=16)
-    plt.xlabel("LMP Perimeter (km)", fontsize=14)
-    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xticks(fontsize=14)
-    # plt.xlim(2300,2900)
-    plt.tight_layout()
-    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
-
-    plt.figure()
-    plt.hist(np.log10(all_ars_list), bins=50, align="left")
-    plt.yscale("log")
-    plt.title(f"LMP Aspect Ratios {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=16)
-    plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
-    plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.xticks(fontsize=14)
-    plt.tight_layout()
-    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
 
     try:
         stime, etime = pd.to_datetime("2015-07-05 00:00:00"), pd.to_datetime("2015-07-07 00:00:00")
@@ -263,4 +286,49 @@ if __name__ == "__main__":
     ax.coastlines()
     plt.savefig(stats_plots_location + "anomaly_locs.png")
 
-    print(f"Your statistics plots are ready in {stats_plots_location}")
+    return num_of_perimeters_list, all_perimeter_sizes_list, all_ars_list
+
+
+
+if __name__ == "__main__":
+    syear, eyear = 2009, 2019
+    stations_list = ['YKC', 'BLC', 'MEA', 'SIT', 'BOU', 'VIC', 'NEW', 'OTT', 'GIM', 'DAW', 'FCC', 'FMC',
+                     'FSP', 'SMI', 'ISL', 'PIN', 'RAL', 'RAN', 'CMO', 'IQA', 'C04', 'C06', 'C10', 'T36']
+    station_coords_list = [np.array([62.48, 64.33, 54.62, 57.07, 40.13, 48.52, 48.27, 45.4, 56.38, 64.05, 58.76,
+                                     56.66, 61.76, 60.02, 53.86, 50.2, 58.22, 62.82, 64.87, 63.75, 50.06, 53.35,
+                                     47.66, 54.71]),
+                           np.array([245.52, 263.97, 246.65, 224.67, 254.77, 236.58, 242.88, 284.45, 265.36, 220.89,
+                                     265.92, 248.79, 238.77, 248.05, 265.34, 263.96, 256.32, 267.89, 212.14, 291.48,
+                                     251.74, 247.03, 245.79, 246.69])]
+    n_sec_lat, n_sec_lon = 10, 35  # # of rows and columns respectively of SECSs that will exist in the grid
+    n_poi_lat, n_poi_lon = 14, 32  # # of rows and columns respectively of POIs that will exist in the grid
+    w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
+    poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
+    epsilon = 0.09323151264778985
+    B_param = "dbn_geo"
+    omni_feature = "AE_INDEX"
+    plot_interps = False
+    plot_every_n_interps = 5000
+    solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
+    stats_plots_location = "stats_plots/"
+    interp_plots_location = "interp_plots/"
+
+    config_dict = {"syear": syear, "eyear": eyear, "stations_list": stations_list,
+                   "station_coords_list": station_coords_list,
+                   "n_sec_lat": n_sec_lat, "n_sec_lon": n_sec_lon, "n_poi_lat": n_poi_lat, "n_poi_lon": n_poi_lon,
+                   "w_lon": w_lon, "e_lon": e_lon, "s_lat": s_lat, "n_lat": n_lat, "poi_coords_list": poi_coords_list,
+                   "epsilon": epsilon, "B_param": B_param, "omni_feature": omni_feature, "plot_interps": plot_interps,
+                   "plot_every_n_interps": plot_every_n_interps, "solar_cycle_phase": solar_cycle_phase,
+                   "stats_plots_location": stats_plots_location, "interp_plots_location": interp_plots_location}
+    num_perimeters_full, sizes_perimeters_full, ars_full = stats_analysis(config_dict)
+
+    config_dict["solar_cycle_phase"] = "minimum"
+    num_perimeters_min, sizes_perimeters_min, ars_min = stats_analysis(config_dict)
+
+    config_dict["solar_cycle_phase"] = "maximum"
+    num_perimeters_max, sizes_perimeters_max, ars_max = stats_analysis(config_dict)
+
+    plot_num_of_blobs(num_blobs_full=num_perimeters_full, num_blobs_min=num_perimeters_min,
+                      num_blobs_max=num_perimeters_max)
+    plot_blob_sizes(sizes_full=sizes_perimeters_full, sizes_min=sizes_perimeters_min, sizes_max=sizes_perimeters_max)
+    plot_aspect_ratios(ars_full=ars_full, ars_min=ars_min, ars_max=ars_max)
