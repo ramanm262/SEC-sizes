@@ -47,12 +47,12 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     # plt.hist(num_blobs_min, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Solar Minimum")
     # plt.hist(num_blobs_max, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Solar Maximum")
     plt.hist([num_blobs_full, num_blobs_min, num_blobs_max], bins=np.arange(8),
-             label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="mid")
+             label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="left", density=True)
     if log_y:
         plt.yscale("log")
     plt.title("Number of Identified LMPs", fontsize=16)
     plt.xlabel("# of LMPs", fontsize=14)
-    plt.ylabel("# of occurrences", fontsize=14)
+    plt.ylabel("Relative frequency of occurrence", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
@@ -63,7 +63,7 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
 def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     num_of_variables = (len(sizes_full) > 0) + (len(sizes_min) > 0) + (len(sizes_max) > 0)
     assert num_of_variables > 0
-    plt.figure()
+    plt.figure(figsize=(10, 5))
     try:
         num_bins = int(np.max(sizes_full)/50)
     except:
@@ -71,14 +71,14 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
             num_bins = int(np.max(sizes_min)/50)
         except:
             num_bins = int(np.max(sizes_max)/50)
-    plt.hist(sizes_full, bins=num_bins, alpha=1/num_of_variables, label="Full Solar Cycle", align="left")
-    plt.hist(sizes_min, bins=num_bins, alpha=1/num_of_variables, label="Solar Minimum", align="left")
-    plt.hist(sizes_max, bins=num_bins, alpha=1/num_of_variables, label="Solar Maximum", align="left")
+    plt.hist(sizes_full, bins=num_bins, histtype="step", label="Full Solar Cycle", align="left", density=True)
+    plt.hist(sizes_min, bins=num_bins, histtype="step", label="Solar Minimum", align="left", density=True)
+    plt.hist(sizes_max, bins=num_bins, histtype="step", label="Solar Maximum", align="left", density=True)
     if log_y:
         plt.yscale("log")
     plt.title("LMP Sizes", fontsize=16)
     plt.xlabel("LMP Perimeter (km)", fontsize=14)
-    plt.ylabel("# of occurrences", fontsize=14)
+    plt.ylabel("Relative frequency of occurrence", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
@@ -91,19 +91,20 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     num_of_variables = (len(ars_full) > 0) + (len(ars_min) > 0) + (len(ars_max) > 0)
     assert num_of_variables > 0
     plt.figure()
-    plt.hist(np.log10(ars_full), bins=50, alpha=1/num_of_variables, label="Full Solar Cycle", align="left")
-    plt.hist(np.log10(ars_min), bins=50, alpha=1/num_of_variables, label="Solar Minimum", align="left")
-    plt.hist(np.log10(ars_max), bins=50, alpha=1/num_of_variables, label="Solar Maximum", align="left")
+    plt.hist(np.log10(ars_full), bins=50, histtype="step", label="Full Solar Cycle", align="left", density=True)
+    plt.hist(np.log10(ars_min), bins=50, histtype="step", label="Solar Minimum", align="left", density=True)
+    plt.hist(np.log10(ars_max), bins=50, histtype="step", label="Solar Maximum", align="left", density=True)
     if log_y:
         plt.yscale("log")
     plt.title("LMP Aspect Ratios", fontsize=16)
     plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
-    plt.ylabel("# of occurrences", fontsize=14)
+    plt.ylabel("Relative frequency of occurrence", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
+
 
 
 def stats_analysis(config_dict):
@@ -116,6 +117,7 @@ def stats_analysis(config_dict):
     poi_coords_list = config_dict["poi_coords_list"]
     epsilon = config_dict["epsilon"]
     B_param = config_dict["B_param"]
+    contour_level = config_dict["contour_level"]
     omni_feature = config_dict["omni_feature"]
     plot_interps = config_dict["plot_interps"]
     plot_every_n_interps = config_dict["plot_every_n_interps"]
@@ -171,12 +173,10 @@ def stats_analysis(config_dict):
         print("Only using data from the low part of the solar cycle")
         all_B_interps = all_B_interps.loc[(all_B_interps.index < pd.to_datetime("2011-01-01")) |
                                           (all_B_interps.index >= pd.to_datetime("2016-01-01"))]
-        syear, eyear = "Solar minimum", "Solar minimum"  # Hacky way to make plot titles and axis labels say the right thing
     elif solar_cycle_phase == "maximum":
         print("Only using data from the high part of the solar cycle")
         all_B_interps = all_B_interps.loc[(all_B_interps.index >= pd.to_datetime("2011-01-01")) &
                                           (all_B_interps.index < pd.to_datetime("2016-01-01"))]
-        syear, eyear = "Solar maximum", "Solar maximum"
     else:
         print("Using data from the entire solar cycle")
     mag_data = mag_data.loc[all_B_interps.index]
@@ -185,7 +185,6 @@ def stats_analysis(config_dict):
     anomaly_coords = []
     perimeters = []
     aspect_ratios = []
-    contour_level = 49.01  # np.percentile(max_list, 90)
     for timestep in tqdm.trange(len(all_B_interps),
                                 desc=f'Generating heatmaps for solar cycle phase "{solar_cycle_phase}"'):
         heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
@@ -306,6 +305,7 @@ if __name__ == "__main__":
     poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
     epsilon = 0.09323151264778985
     B_param = "dbn_geo"
+    contour_level = 28
     omni_feature = "AE_INDEX"
     plot_interps = False
     plot_every_n_interps = 5000
@@ -317,9 +317,11 @@ if __name__ == "__main__":
                    "station_coords_list": station_coords_list,
                    "n_sec_lat": n_sec_lat, "n_sec_lon": n_sec_lon, "n_poi_lat": n_poi_lat, "n_poi_lon": n_poi_lon,
                    "w_lon": w_lon, "e_lon": e_lon, "s_lat": s_lat, "n_lat": n_lat, "poi_coords_list": poi_coords_list,
-                   "epsilon": epsilon, "B_param": B_param, "omni_feature": omni_feature, "plot_interps": plot_interps,
-                   "plot_every_n_interps": plot_every_n_interps, "solar_cycle_phase": solar_cycle_phase,
-                   "stats_plots_location": stats_plots_location, "interp_plots_location": interp_plots_location}
+                   "epsilon": epsilon, "B_param": B_param, "contour_level": contour_level, "omni_feature": omni_feature,
+                   "plot_interps": plot_interps, "plot_every_n_interps": plot_every_n_interps,
+                   "solar_cycle_phase": solar_cycle_phase, "stats_plots_location": stats_plots_location,
+                   "interp_plots_location": interp_plots_location}
+
     num_perimeters_full, sizes_perimeters_full, ars_full = stats_analysis(config_dict)
 
     config_dict["solar_cycle_phase"] = "minimum"
