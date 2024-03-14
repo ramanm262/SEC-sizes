@@ -43,9 +43,6 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     num_of_variables = (len(num_blobs_full) > 0) + (len(num_blobs_min) > 0) + (len(num_blobs_max) > 0)
     assert num_of_variables > 0
     plt.figure()
-    # plt.hist(num_blobs_full, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Full Solar Cycle")
-    # plt.hist(num_blobs_min, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Solar Minimum")
-    # plt.hist(num_blobs_max, bins=np.arange(8-0.5), alpha=1/(1.5*num_of_variables), label="Solar Maximum")
     plt.hist([num_blobs_full, num_blobs_min, num_blobs_max], bins=np.arange(8),
              label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="left", density=True)
     if log_y:
@@ -58,6 +55,17 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.legend(fontsize=14)
     plt.tight_layout()
     plt.savefig(stats_plots_location + "num_of_blobs.png")
+    full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(8), density=True)
+    smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(8), density=True)
+    smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(8), density=True)
+    plt.figure()
+    plt.bar(bins[:-1], smax-smin, width=bins[1]-bins[0], align="center")
+    # plt.yscale("log")
+    plt.title("Solar Cycle Phase Difference in Number of Identified LMPs", fontsize=16)
+    plt.ylabel("Relative Frequency Difference Max-Min", fontsize=14)
+    plt.xlabel("# of LMPs", fontsize=14)
+    plt.savefig(stats_plots_location + "num_of_blobs_diffs.png")
+
 
 
 def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
@@ -85,6 +93,16 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     # plt.xlim(2300,2900)
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
+    full, bins, _patches = plt.hist(sizes_full, bins=num_bins, density=True)
+    smin, bins, _patches = plt.hist(sizes_min, bins=num_bins, density=True)
+    smax, bins, _patches = plt.hist(sizes_max, bins=num_bins, density=True)
+    plt.figure()
+    plt.bar(bins[:-1], smax-smin, width=bins[1]-bins[0], align="edge")
+    # plt.yscale("log")
+    plt.title("Solar Cycle Phase Difference in LMP Sizes", fontsize=16)
+    plt.ylabel("Relative Frequency Difference Max-Min", fontsize=14)
+    plt.xlabel("LMP Perimeter (km)", fontsize=14)
+    plt.savefig(stats_plots_location + f"blob_size_diffs_{n_sec_lat}by{n_sec_lon}.png")
 
 
 def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
@@ -104,6 +122,16 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.legend(fontsize=14)
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
+    full, bins, _patches = plt.hist(np.log10(ars_full), bins=50, density=True)
+    smin, bins, _patches = plt.hist(np.log10(ars_min), bins=50, density=True)
+    smax, bins, _patches = plt.hist(np.log10(ars_max), bins=50, density=True)
+    plt.figure()
+    plt.bar(bins[:-1], smax-smin, width=bins[1]-bins[0], align="edge")
+    # plt.yscale("log")
+    plt.title("Solar Cycle Phase Difference in LMP Aspect Ratios", fontsize=16)
+    plt.ylabel("Relative Frequency Difference Max-Min", fontsize=14)
+    plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
+    plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.png")
 
 
 
@@ -171,12 +199,12 @@ def stats_analysis(config_dict):
 
     if solar_cycle_phase == "minimum":
         print("Only using data from the low part of the solar cycle")
-        all_B_interps = all_B_interps.loc[(all_B_interps.index < pd.to_datetime("2011-01-01")) |
-                                          (all_B_interps.index >= pd.to_datetime("2016-01-01"))]
+        all_B_interps = all_B_interps.loc[(all_B_interps.index < pd.to_datetime("2010-01-01")) |
+                                          (all_B_interps.index >= pd.to_datetime("2018-01-01"))]
     elif solar_cycle_phase == "maximum":
         print("Only using data from the high part of the solar cycle")
-        all_B_interps = all_B_interps.loc[(all_B_interps.index >= pd.to_datetime("2011-01-01")) &
-                                          (all_B_interps.index < pd.to_datetime("2016-01-01"))]
+        all_B_interps = all_B_interps.loc[(all_B_interps.index >= pd.to_datetime("2012-01-01")) &
+                                          (all_B_interps.index < pd.to_datetime("2014-07-01"))]
     else:
         print("Using data from the entire solar cycle")
     mag_data = mag_data.loc[all_B_interps.index]
@@ -305,7 +333,7 @@ if __name__ == "__main__":
     poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
     epsilon = 0.09323151264778985
     B_param = "dbn_geo"
-    contour_level = 28
+    contour_level = 29.78
     omni_feature = "AE_INDEX"
     plot_interps = False
     plot_every_n_interps = 5000
