@@ -333,7 +333,7 @@ if __name__ == "__main__":
     poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
     epsilon = 0.09323151264778985
     B_param = "dbn_geo"
-    contour_level = 29.78
+    contour_level = 25.95
     omni_feature = "AE_INDEX"
     plot_interps = False
     plot_every_n_interps = 5000
