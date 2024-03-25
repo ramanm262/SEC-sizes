@@ -67,7 +67,6 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.savefig(stats_plots_location + "num_of_blobs_diffs.png")
 
 
-
 def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     num_of_variables = (len(sizes_full) > 0) + (len(sizes_min) > 0) + (len(sizes_max) > 0)
     assert num_of_variables > 0
@@ -134,7 +133,6 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.png")
 
 
-
 def stats_analysis(config_dict):
     syear, eyear = config_dict["syear"], config_dict["eyear"]
     stations_list = config_dict["stations_list"]
@@ -155,11 +153,8 @@ def stats_analysis(config_dict):
 
     all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
 
-    station_geocolats = np.pi / 2 - np.pi / 180 * station_coords_list[0]
-    station_geolons = np.pi / 180 * station_coords_list[1]
     poi_geocolats = np.pi / 2 - np.pi / 180 * poi_coords_list[0]
     poi_geolons = np.pi / 180 * poi_coords_list[1]
-
 
     # Generate full list of coords for every POI in row-major format
     all_poi_colats, all_poi_lats, all_poi_lons = [], [], []
@@ -170,9 +165,9 @@ def stats_analysis(config_dict):
             all_poi_lons.append(lon)
     poi_lons_mesh, poi_lats_mesh = np.meshgrid(poi_coords_list[1], poi_coords_list[0])
 
-
     projection = ccrs.AlbersEqualArea(central_latitude=50, central_longitude=255)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5), sharex=True, sharey=True, subplot_kw={"projection": projection})
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5), sharex=True, sharey=True,
+                                   subplot_kw={"projection": projection})
     ax1.set_extent((w_lon, e_lon, s_lat, n_lat))
     # ax2.set_extent((w_lon, e_lon, s_lat, n_lat))
     fig.subplots_adjust(wspace=0.05, left=0.075, right=0.88)
@@ -280,7 +275,8 @@ def stats_analysis(config_dict):
         index_data = index_data.loc[perimeter_maxes.index]
         perim_ax.plot(timestamps, perimeter_maxes, c="black", label="Largest LMP Perimeter")
         index_ax.plot(timestamps, index_data, c="green", label="AE Index")
-        fig.suptitle(f"LMP Sizes (Example Storm) (r={correlation_with_index(perimeter_maxes, index_data)})", fontsize=16)
+        fig.suptitle(f"LMP Sizes (Example Storm) (r={correlation_with_index(perimeter_maxes, index_data)})",
+                     fontsize=16)
         perim_ax.set_xlabel("Time", fontsize=14)
         perim_ax.set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
         index_ax.set_ylabel("AE Index (nT)", fontsize=14, color="green")
@@ -314,7 +310,6 @@ def stats_analysis(config_dict):
     plt.savefig(stats_plots_location + "anomaly_locs.png")
 
     return num_of_perimeters_list, all_perimeter_sizes_list, all_ars_list
-
 
 
 if __name__ == "__main__":
