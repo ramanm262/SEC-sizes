@@ -39,6 +39,22 @@ def correlation_with_index(param_series, index_series):
     return pearsonr(combined_df.iloc[:, 0], combined_df.iloc[:, 1])[0]
 
 
+def kl_divergence(max_series, min_series, bins, integrated=True):
+    '''
+    Calculates the symmetrized Kullback-Leibler divergence between two series
+    '''
+    to_keep = np.where((min_series != 0) & (max_series != 0))
+    max_series, min_series = max_series[to_keep], min_series[to_keep]
+    bins = bins[to_keep]
+    if integrated:
+        # return np.sum(np.abs(max_series - min_series)), bins
+        return (np.sum(max_series * np.log(max_series / min_series)) +
+                np.sum(min_series * np.log(min_series / max_series)), bins)
+    else:
+        # return np.abs(max_series - min_series), bins
+        return max_series * np.log(max_series / min_series) + min_series * np.log(min_series / max_series), bins
+
+
 def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log_y=True):
     num_of_variables = (len(num_blobs_full) > 0) + (len(num_blobs_min) > 0) + (len(num_blobs_max) > 0)
     assert num_of_variables > 0
@@ -59,10 +75,18 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(8), density=True)
     smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(8), density=True)
     plt.figure()
-    plt.bar(bins[:-1], smax-smin, width=bins[1]-bins[0], align="center")
+    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
+    kl, _ = kl_divergence(smax, smin, bins)
+    plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="center")
+    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
+    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
+    print("Number of LMPs")
+    print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
+    print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
     # plt.yscale("log")
-    plt.title("Solar Cycle Phase Difference in Number of Identified LMPs", fontsize=16)
-    plt.ylabel("Relative Frequency Difference Max-Min", fontsize=14)
+    plt.title("Solar Cycle Phase Difference in Number of LMPs"
+              "\n$J_{KL}$"+f"={kl:.4f}", fontsize=16)
+    plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
     plt.xlabel("# of LMPs", fontsize=14)
     plt.savefig(stats_plots_location + "num_of_blobs_diffs.png")
 
@@ -96,10 +120,17 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     smin, bins, _patches = plt.hist(sizes_min, bins=num_bins, density=True)
     smax, bins, _patches = plt.hist(sizes_max, bins=num_bins, density=True)
     plt.figure()
-    plt.bar(bins[:-1], smax-smin, width=bins[1]-bins[0], align="edge")
+    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
+    kl, _ = kl_divergence(smax, smin, bins)
+    plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="edge")
+    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
+    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
+    print("LMP Sizes")
+    print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
+    print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
     # plt.yscale("log")
-    plt.title("Solar Cycle Phase Difference in LMP Sizes", fontsize=16)
-    plt.ylabel("Relative Frequency Difference Max-Min", fontsize=14)
+    plt.title("Solar Cycle Phase $J_{KL}$"+f"={kl:.4f}", fontsize=16)
+    plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
     plt.xlabel("LMP Perimeter (km)", fontsize=14)
     plt.savefig(stats_plots_location + f"blob_size_diffs_{n_sec_lat}by{n_sec_lon}.png")
 
@@ -107,10 +138,10 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
 def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     num_of_variables = (len(ars_full) > 0) + (len(ars_min) > 0) + (len(ars_max) > 0)
     assert num_of_variables > 0
-    plt.figure()
-    plt.hist(np.log10(ars_full), bins=50, histtype="step", label="Full Solar Cycle", align="left", density=True)
-    plt.hist(np.log10(ars_min), bins=50, histtype="step", label="Solar Minimum", align="left", density=True)
-    plt.hist(np.log10(ars_max), bins=50, histtype="step", label="Solar Maximum", align="left", density=True)
+    plt.figure(figsize=(10, 5))
+    plt.hist(np.log10(ars_full), bins=100, histtype="step", label="Full Solar Cycle", align="left", density=True)
+    plt.hist(np.log10(ars_min), bins=100, histtype="step", label="Solar Minimum", align="left", density=True)
+    plt.hist(np.log10(ars_max), bins=100, histtype="step", label="Solar Maximum", align="left", density=True)
     if log_y:
         plt.yscale("log")
     plt.title("LMP Aspect Ratios", fontsize=16)
@@ -124,11 +155,20 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     full, bins, _patches = plt.hist(np.log10(ars_full), bins=50, density=True)
     smin, bins, _patches = plt.hist(np.log10(ars_min), bins=50, density=True)
     smax, bins, _patches = plt.hist(np.log10(ars_max), bins=50, density=True)
+    plt.cla()
     plt.figure()
-    plt.bar(bins[:-1], smax-smin, width=bins[1]-bins[0], align="edge")
+    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
+    kl, _ = kl_divergence(smax, smin, bins)
+    plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="edge")
+    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
+    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
+    print("Aspect Ratios")
+    print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
+    print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
     # plt.yscale("log")
-    plt.title("Solar Cycle Phase Difference in LMP Aspect Ratios", fontsize=16)
-    plt.ylabel("Relative Frequency Difference Max-Min", fontsize=14)
+    plt.title("Solar Cycle Phase Difference in LMP Aspect Ratios"
+            "\n$J_{KL}$"+f"={kl:.4f}", fontsize=16)
+    plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
     plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
     plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.png")
 
