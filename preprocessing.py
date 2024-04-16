@@ -1,5 +1,6 @@
 import datetime as dt
 import pandas as pd
+import numpy as np
 import tqdm
 
 
@@ -26,6 +27,9 @@ def storm_extract(df, storm_list, B_param, lead, recovery):
 def load_supermag(stations_list, syear, eyear, B_param="dbn_geo", storm_time_only=True, saving=True,
                   data_path="/data/ramans_files/mag-feather/"):
     if saving:
+        if B_param == "HORIZONTAL":
+            raise ValueError("'B_param' cannot be 'HORIZONTAL' when 'saving' is True."
+                             "Use 'dbn_geo' or 'dbe_geo' for 'B_param' instead.")
         mag_data = []
         for station_num in tqdm.trange(len(stations_list), desc=f"Loading SuperMAG {B_param[2]} data"):
 
@@ -48,7 +52,18 @@ def load_supermag(stations_list, syear, eyear, B_param="dbn_geo", storm_time_onl
         mag_data.to_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param)
 
     else:
-        mag_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param)
+        if B_param == "dbn_geo" or B_param == "dbn_geo":
+            mag_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param)
+        elif B_param == "HORIZONTAL":
+            mag_n_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key="dbn_geo")
+            mag_e_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key="dbe_geo")
+            # Remove column names so the dataframes can be added elementwise
+            mag_n_data.columns, mag_e_data.columns = (np.arange(len(mag_n_data.columns)),
+                                                      np.arange(len(mag_e_data.columns)))
+            mag_data = np.sqrt(mag_n_data**2 + mag_e_data**2)
+            # Put column names back in
+            mag_data.columns = [station_name + "_HORIZONTAL" for station_name in stations_list]
+            del mag_n_data, mag_e_data
 
     return mag_data
 

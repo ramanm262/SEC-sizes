@@ -191,7 +191,14 @@ def stats_analysis(config_dict):
     stats_plots_location = config_dict["stats_plots_location"]
     interp_plots_location = config_dict["interp_plots_location"]
 
-    all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
+    if B_param == "dbn_geo" or B_param == "dbe_geo":
+        all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
+    elif B_param == "HORIZONTAL":
+        all_BN_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5","dbn_geo")
+        all_BE_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", "dbe_geo")
+        all_B_interps = np.sqrt(all_BN_interps**2 + all_BE_interps**2)
+        del all_BN_interps, all_BE_interps
+
 
     poi_geocolats = np.pi / 2 - np.pi / 180 * poi_coords_list[0]
     poi_geolons = np.pi / 180 * poi_coords_list[1]
@@ -303,28 +310,44 @@ def stats_analysis(config_dict):
         stime, etime = pd.to_datetime("2015-07-05 00:00:00"), pd.to_datetime("2015-07-07 00:00:00")
         timestamps = mag_data.index
         plt.figure()
-        fig, perim_ax = plt.subplots(1, 1, figsize=(10, 5))
-        index_ax = perim_ax.twinx()
+        fig, var_axs = plt.subplots(3, 1, figsize=(8, 8), sharex=True, gridspec_kw={'hspace': 0})
+        index_axs = [var_axs[0].twinx(), var_axs[1].twinx(), var_axs[2].twinx()]
         perimeter_maxes = [0]*len(perimeters)
+        ar_means = [0]*len(aspect_ratios)
         for timestep in range(len(perimeters)):
-            if len(perimeters[timestep]) > 0:
+            if len(perimeters[timestep]) > 0:  # If there are any perimeters
                 perimeter_maxes[timestep] = np.max(perimeters[timestep])
+                ar_means[timestep] = np.mean(aspect_ratios[timestep])
+        num_storm_lmps = pd.DataFrame(num_of_perimeters_list, index=timestamps)
         perimeter_maxes = pd.DataFrame(perimeter_maxes, index=timestamps)
+        ar_means = pd.DataFrame(ar_means, index=timestamps)
         timestamps = timestamps[(timestamps >= stime) & (timestamps <= etime)]
+        num_storm_lmps = num_storm_lmps[(num_storm_lmps.index >= stime) & (num_storm_lmps.index <= etime)]
         perimeter_maxes = perimeter_maxes[(perimeter_maxes.index >= stime) & (perimeter_maxes.index <= etime)]
+        ar_means = ar_means[(ar_means.index >= stime) & (ar_means.index <= etime)]
         index_data = index_data.loc[perimeter_maxes.index]
-        perim_ax.plot(timestamps, perimeter_maxes, c="black", label="Largest LMP Perimeter")
-        index_ax.plot(timestamps, index_data, c="green", label="AE Index")
+        var_axs[0].plot(timestamps, num_storm_lmps, c="black")
+        index_axs[0].plot(timestamps, index_data, c="green")
+        var_axs[1].plot(timestamps, perimeter_maxes, c="black")
+        index_axs[1].plot(timestamps, index_data, c="green")
+        var_axs[2].plot(timestamps, ar_means, c="black")
+        index_axs[2].plot(timestamps, index_data, c="green")
         fig.suptitle(f"LMP Sizes (Example Storm) (r={correlation_with_index(perimeter_maxes, index_data)})",
                      fontsize=16)
-        perim_ax.set_xlabel("Time", fontsize=14)
-        perim_ax.set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
-        index_ax.set_ylabel("AE Index (nT)", fontsize=14, color="green")
-        perim_ax.tick_params(axis='x', labelsize=14, labelrotation=40)
-        perim_ax.tick_params(axis='y', labelsize=14)
-        index_ax.tick_params(axis='y', labelcolor="green", labelsize=14)
-        # plt.xlim(stime, etime)
-        # plt.legend(fontsize=14)
+        var_axs[0].set_ylabel("Number of LMPs", fontsize=14)
+        var_axs[1].set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
+        var_axs[2].set_ylabel("Mean Aspect Ratio", fontsize=14)
+        var_axs[2].set_xlabel("Time", fontsize=14)
+        index_axs[0].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
+        index_axs[1].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
+        index_axs[2].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
+        for this_plot in range(3):
+            if this_plot == 2:
+                var_axs[this_plot].tick_params(axis='x', labelsize=14, labelrotation=40)
+            else:
+                var_axs[this_plot].tick_params([])
+            var_axs[this_plot].tick_params(axis='y', labelsize=14)
+            index_axs[this_plot].tick_params(axis='y', labelcolor="green", labelsize=14)
         plt.tight_layout()
         plt.savefig(stats_plots_location + "blob_size_timeseries.png")
     except ValueError:
@@ -367,9 +390,9 @@ if __name__ == "__main__":
     w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
     poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
     epsilon = 0.09323151264778985
-    B_param = "dbn_geo"
+    B_param = "dbn_geo"  # "dbn_geo", "dbe_geo", or "HORIZONTAL"
     contour_level = 25.95
-    omni_feature = "AE_INDEX"
+    omni_feature = "SYM_H"
     plot_interps = False
     plot_every_n_interps = 5000
     solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
