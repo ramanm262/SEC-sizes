@@ -223,8 +223,11 @@ def stats_analysis(config_dict):
     color_map = cm.coolwarm
     divider = make_axes_locatable(ax2)
     cax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
-    norm = plt.cm.colors.TwoSlopeNorm(vcenter=0, vmin=np.percentile(all_B_interps, 5),
-                                      vmax=np.percentile(all_B_interps, 95))
+    if B_param == "dbn_geo" or B_param == "dbe_geo":
+        norm = plt.cm.colors.TwoSlopeNorm(vcenter=0, vmin=np.percentile(all_B_interps, 5),
+                                          vmax=np.percentile(all_B_interps, 95))
+    elif B_param == "HORIZONTAL":
+        norm = plt.cm.colors.Normalize(vmin=np.percentile(all_B_interps, 5), vmax=np.percentile(all_B_interps, 95))
     scalarmappable = plt.cm.ScalarMappable(norm=norm, cmap=color_map)
     station_scatter = ax1.scatter(station_coords_list[1], station_coords_list[0],
                                   c=np.random.rand(len(station_coords_list[0])), s=80, cmap=color_map,
@@ -390,7 +393,7 @@ if __name__ == "__main__":
     w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
     poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
     epsilon = 0.09323151264778985
-    B_param = "dbn_geo"  # "dbn_geo", "dbe_geo", or "HORIZONTAL"
+    B_param = "HORIZONTAL"  # "dbn_geo", "dbe_geo", or "HORIZONTAL"
     contour_level = 25.95
     omni_feature = "SYM_H"
     plot_interps = False
