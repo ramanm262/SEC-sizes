@@ -52,7 +52,7 @@ def load_supermag(stations_list, syear, eyear, B_param="dbn_geo", storm_time_onl
         mag_data.to_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param)
 
     else:
-        if B_param == "dbn_geo" or B_param == "dbn_geo":
+        if B_param == "dbn_geo" or B_param == "dbe_geo":
             mag_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key=B_param)
         elif B_param == "HORIZONTAL":
             mag_n_data = pd.read_hdf(f"supermag_processed_{syear}-{eyear}.h5", key="dbn_geo")
