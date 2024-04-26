@@ -35,7 +35,7 @@ def calculate_aspect_ratio(contour, poi_coords_list):
 
 def correlation_with_index(param_series, index_series):
     combined_df = pd.concat([param_series, index_series], axis=1)
-    combined_df = combined_df[combined_df[0] != 0]
+    combined_df = combined_df[combined_df[0].notna()]
     return pearsonr(combined_df.iloc[:, 0], combined_df.iloc[:, 1])[0]
 
 
@@ -58,7 +58,7 @@ def kl_divergence(max_series, min_series, bins, integrated=True):
 def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log_y=True):
     num_of_variables = (len(num_blobs_full) > 0) + (len(num_blobs_min) > 0) + (len(num_blobs_max) > 0)
     assert num_of_variables > 0
-    plt.figure()
+    plt.figure(figsize=(5.5, 5))
     plt.hist([num_blobs_full, num_blobs_min, num_blobs_max], bins=np.arange(8),
              label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="left", density=True)
     if log_y:
@@ -70,7 +70,7 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "num_of_blobs.png")
+    plt.savefig(stats_plots_location + "num_of_blobs.svg")
     full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(8), density=True)
     smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(8), density=True)
     smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(8), density=True)
@@ -88,13 +88,13 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
               "\n$J_{KL}$"+f"={kl:.4f}", fontsize=16)
     plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
     plt.xlabel("# of LMPs", fontsize=14)
-    plt.savefig(stats_plots_location + "num_of_blobs_diffs.png")
+    plt.savefig(stats_plots_location + "num_of_blobs_diffs.svg")
 
 
 def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     num_of_variables = (len(sizes_full) > 0) + (len(sizes_min) > 0) + (len(sizes_max) > 0)
     assert num_of_variables > 0
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(6.5, 4))
     try:
         num_bins = int(np.max(sizes_full)/50)
     except:
@@ -115,7 +115,7 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     plt.legend(fontsize=14)
     # plt.xlim(2300,2900)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.png")
+    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.svg")
     full, bins, _patches = plt.hist(sizes_full, bins=num_bins, density=True)
     smin, bins, _patches = plt.hist(sizes_min, bins=num_bins, density=True)
     smax, bins, _patches = plt.hist(sizes_max, bins=num_bins, density=True)
@@ -132,13 +132,13 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     plt.title("Solar Cycle Phase $J_{KL}$"+f"={kl:.4f}", fontsize=16)
     plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
     plt.xlabel("LMP Perimeter (km)", fontsize=14)
-    plt.savefig(stats_plots_location + f"blob_size_diffs_{n_sec_lat}by{n_sec_lon}.png")
+    plt.savefig(stats_plots_location + f"blob_size_diffs_{n_sec_lat}by{n_sec_lon}.svg")
 
 
 def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     num_of_variables = (len(ars_full) > 0) + (len(ars_min) > 0) + (len(ars_max) > 0)
     assert num_of_variables > 0
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(6, 4))
     plt.hist(np.log10(ars_full), bins=100, histtype="step", label="Full Solar Cycle", align="left", density=True)
     plt.hist(np.log10(ars_min), bins=100, histtype="step", label="Solar Minimum", align="left", density=True)
     plt.hist(np.log10(ars_max), bins=100, histtype="step", label="Solar Maximum", align="left", density=True)
@@ -151,7 +151,7 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.png")
+    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.svg")
     full, bins, _patches = plt.hist(np.log10(ars_full), bins=50, density=True)
     smin, bins, _patches = plt.hist(np.log10(ars_min), bins=50, density=True)
     smax, bins, _patches = plt.hist(np.log10(ars_max), bins=50, density=True)
@@ -170,7 +170,7 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
             "\n$J_{KL}$"+f"={kl:.4f}", fontsize=16)
     plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
     plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
-    plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.png")
+    plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.svg")
 
 
 def stats_analysis(config_dict):
@@ -199,7 +199,6 @@ def stats_analysis(config_dict):
         all_B_interps = np.sqrt(all_BN_interps**2 + all_BE_interps**2)
         del all_BN_interps, all_BE_interps
 
-
     poi_geocolats = np.pi / 2 - np.pi / 180 * poi_coords_list[0]
     poi_geolons = np.pi / 180 * poi_coords_list[1]
 
@@ -220,14 +219,16 @@ def stats_analysis(config_dict):
     fig.subplots_adjust(wspace=0.05, left=0.075, right=0.88)
     # fig.suptitle(f'd$B_{B_param[2]}$', fontsize=20)
     plt.cla()
-    color_map = cm.coolwarm
     divider = make_axes_locatable(ax2)
     cax = fig.add_axes([0.90, 0.15, 0.02, 0.7])
     if B_param == "dbn_geo" or B_param == "dbe_geo":
+        color_map = cm.coolwarm
         norm = plt.cm.colors.TwoSlopeNorm(vcenter=0, vmin=np.percentile(all_B_interps, 5),
                                           vmax=np.percentile(all_B_interps, 95))
     elif B_param == "HORIZONTAL":
-        norm = plt.cm.colors.Normalize(vmin=np.percentile(all_B_interps, 5), vmax=np.percentile(all_B_interps, 95))
+        color_map = cm.viridis
+        norm = plt.cm.colors.TwoSlopeNorm(vcenter=np.percentile(all_B_interps, 30), vmin=np.percentile(all_B_interps, 0),
+                                            vmax=np.percentile(all_B_interps, 95))
     scalarmappable = plt.cm.ScalarMappable(norm=norm, cmap=color_map)
     station_scatter = ax1.scatter(station_coords_list[1], station_coords_list[0],
                                   c=np.random.rand(len(station_coords_list[0])), s=80, cmap=color_map,
@@ -301,7 +302,7 @@ def stats_analysis(config_dict):
                     anomaly_coords.append([np.nan, np.nan])
 
         if plot_interps and (timestep % plot_every_n_interps == 0) and (len(this_perimeters) != 0):
-            plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.png")
+            plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.svg")
         perimeters.append(this_perimeters)
         aspect_ratios.append(this_aspect_ratios)
 
@@ -310,49 +311,57 @@ def stats_analysis(config_dict):
     all_ars_list = [ar for timestep in aspect_ratios for ar in timestep]
 
     try:
-        stime, etime = pd.to_datetime("2015-07-05 00:00:00"), pd.to_datetime("2015-07-07 00:00:00")
+        stime, etime = pd.to_datetime("2013-03-01 00:00:00"), pd.to_datetime("2013-03-04 00:00:00")
         timestamps = mag_data.index
         plt.figure()
-        fig, var_axs = plt.subplots(3, 1, figsize=(8, 8), sharex=True, gridspec_kw={'hspace': 0})
+        fig, var_axs = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
         index_axs = [var_axs[0].twinx(), var_axs[1].twinx(), var_axs[2].twinx()]
-        perimeter_maxes = [0]*len(perimeters)
-        ar_means = [0]*len(aspect_ratios)
+        perimeter_means = [np.nan]*len(perimeters)
+        ar_means = [np.nan]*len(aspect_ratios)
         for timestep in range(len(perimeters)):
             if len(perimeters[timestep]) > 0:  # If there are any perimeters
-                perimeter_maxes[timestep] = np.max(perimeters[timestep])
-                ar_means[timestep] = np.mean(aspect_ratios[timestep])
+                perimeter_means[timestep] = np.mean(perimeters[timestep])
+                ar_means[timestep] = np.mean(np.log10(aspect_ratios[timestep]))
         num_storm_lmps = pd.DataFrame(num_of_perimeters_list, index=timestamps)
-        perimeter_maxes = pd.DataFrame(perimeter_maxes, index=timestamps)
+        perimeter_means = pd.DataFrame(perimeter_means, index=timestamps)
         ar_means = pd.DataFrame(ar_means, index=timestamps)
         timestamps = timestamps[(timestamps >= stime) & (timestamps <= etime)]
         num_storm_lmps = num_storm_lmps[(num_storm_lmps.index >= stime) & (num_storm_lmps.index <= etime)]
-        perimeter_maxes = perimeter_maxes[(perimeter_maxes.index >= stime) & (perimeter_maxes.index <= etime)]
+        perimeter_means = perimeter_means[(perimeter_means.index >= stime) & (perimeter_means.index <= etime)]
         ar_means = ar_means[(ar_means.index >= stime) & (ar_means.index <= etime)]
-        index_data = index_data.loc[perimeter_maxes.index]
+        index_data = index_data.loc[perimeter_means.index]
+        corr_str = correlation_with_index(perimeter_means, index_data)
         var_axs[0].plot(timestamps, num_storm_lmps, c="black")
         index_axs[0].plot(timestamps, index_data, c="green")
-        var_axs[1].plot(timestamps, perimeter_maxes, c="black")
+        var_axs[1].plot(timestamps, perimeter_means, c="black")
         index_axs[1].plot(timestamps, index_data, c="green")
         var_axs[2].plot(timestamps, ar_means, c="black")
         index_axs[2].plot(timestamps, index_data, c="green")
-        fig.suptitle(f"LMP Sizes (Example Storm) (r={correlation_with_index(perimeter_maxes, index_data)})",
-                     fontsize=16)
-        var_axs[0].set_ylabel("Number of LMPs", fontsize=14)
-        var_axs[1].set_ylabel(f"Perimeter of largest LMP (km)", fontsize=14)
-        var_axs[2].set_ylabel("Mean Aspect Ratio", fontsize=14)
+        # Add correlation values to legend in a hacky way
+        var_axs[0].plot([], [], ' ', label=f"r={correlation_with_index(num_storm_lmps, index_data):.2f}")
+        var_axs[1].plot([], [], ' ', label=f"r={correlation_with_index(perimeter_means, index_data):.2f}")
+        var_axs[2].plot([], [], ' ', label=f"r={correlation_with_index(ar_means, index_data):.2f}")
+        # fig.suptitle(f"LMP Sizes (Example Storm) (r={corr_str})",
+        #              fontsize=16)
+        var_axs[0].set_ylabel("Number", fontsize=14)
+        var_axs[1].set_ylabel(f"Mean Perimeter (km)", fontsize=14)
+        var_axs[1].ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+        var_axs[2].set_ylabel("Mean $log(A)$", fontsize=14)
         var_axs[2].set_xlabel("Time", fontsize=14)
-        index_axs[0].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
+        # index_axs[0].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
         index_axs[1].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
-        index_axs[2].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
+        # index_axs[2].set_ylabel("SYM-H (nT)", fontsize=14, color="green")
         for this_plot in range(3):
             if this_plot == 2:
                 var_axs[this_plot].tick_params(axis='x', labelsize=14, labelrotation=40)
             else:
-                var_axs[this_plot].tick_params([])
+                var_axs[this_plot].tick_params(axis='x', bottom=False, labelbottom=False)
             var_axs[this_plot].tick_params(axis='y', labelsize=14)
             index_axs[this_plot].tick_params(axis='y', labelcolor="green", labelsize=14)
+            var_axs[this_plot].legend(fontsize=14)
+        plt.subplots_adjust(hspace=0)
         plt.tight_layout()
-        plt.savefig(stats_plots_location + "blob_size_timeseries.png")
+        plt.savefig(stats_plots_location + "blob_size_timeseries.svg")
     except ValueError:
         print('#'*8+"\nWarning!\nSkipping example storm plot because there is no data for it.\n"
                     "Ensure the storm dates solar_cycle_phase are set correctly.\n"+'#'*8)
@@ -373,7 +382,7 @@ def stats_analysis(config_dict):
     plt.legend(loc="upper left", prop={'size': 14}, handles=[centroids, station_scatter, rect])
     ax.gridlines(draw_labels=False)
     ax.coastlines()
-    plt.savefig(stats_plots_location + "anomaly_locs.png")
+    plt.savefig(stats_plots_location + "anomaly_locs.svg")
 
     return num_of_perimeters_list, all_perimeter_sizes_list, all_ars_list
 
@@ -393,10 +402,10 @@ if __name__ == "__main__":
     w_lon, e_lon, s_lat, n_lat = 215., 295., 30., 65.
     poi_coords_list = [np.linspace(45, 55, n_poi_lat), np.linspace(230, 280, n_poi_lon)]
     epsilon = 0.09323151264778985
-    B_param = "HORIZONTAL"  # "dbn_geo", "dbe_geo", or "HORIZONTAL"
+    B_param = "dbn_geo"  # "dbn_geo", "dbe_geo", or "HORIZONTAL"
     contour_level = 25.95
     omni_feature = "SYM_H"
-    plot_interps = False
+    plot_interps = True
     plot_every_n_interps = 5000
     solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
     stats_plots_location = "stats_plots/"

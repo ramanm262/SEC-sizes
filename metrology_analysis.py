@@ -23,8 +23,13 @@ def mean_deviation(B_interp_vector):
 
 if __name__ == "__main__":
 
-    all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
-    # Remove timestamps that are double-counted by immediately successive storms
+    if B_param == "dbn_geo" or B_param == "dbe_geo":
+        all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
+    elif B_param == "HORIZONTAL":
+        all_BN_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5","dbn_geo")
+        all_BE_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", "dbe_geo")
+        all_B_interps = np.sqrt(all_BN_interps**2 + all_BE_interps**2)
+        del all_BN_interps, all_BE_interps    # Remove timestamps that are double-counted by immediately successive storms
     all_B_interps.drop_duplicates(inplace=True)
 
     mean_list, std_list, rms_deviation_list, mean_deviation_list, max_list, min_list = [], [], [], [], [], []
@@ -47,7 +52,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "mean.png")
+    plt.savefig(stats_plots_location + "mean.svg")
 
     plt.cla()
     plt.hist(std_list, bins=int(np.max(std_list)/5), align="left")
@@ -59,7 +64,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "std.png")
+    plt.savefig(stats_plots_location + "std.svg")
 
     plt.cla()
     plt.hist(mean_deviation_list, bins=int(np.max(mean_deviation_list)/5), align="left")
@@ -71,7 +76,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "mean_deviation.png")
+    plt.savefig(stats_plots_location + "mean_deviation.svg")
 
     plt.cla()
     plt.hist(rms_deviation_list, bins=int(np.max(rms_deviation_list)/5), align="left")
@@ -83,7 +88,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "rms_deviation.png")
+    plt.savefig(stats_plots_location + "rms_deviation.svg")
 
     plt.cla()
     plt.hist(max_list, bins=int(np.max(max_list)/5), align="left")
@@ -91,17 +96,21 @@ if __name__ == "__main__":
     plt.title("Spatial Maximum of Disturbance", fontsize=16)
     plt.xlabel("Maximum Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    percentile = np.percentile(max_list, 50)
+    percentile = np.percentile(max_list, 8)
     plt.axvline(percentile, color='k', linestyle='dashed', label=f"{percentile:.2f}")
     # plt.ylim(0, 2200)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
     plt.legend()
-    plt.savefig(stats_plots_location + "max.png")
+    plt.savefig(stats_plots_location + "max.svg")
 
     plt.cla()
-    plt.hist(min_list, bins=int(np.abs(np.min(min_list))/5), align="left")
+    if B_param == "HORIZONTAL":
+        min_bins = int(np.abs(np.max(max_list))/5)
+    else:
+        min_bins = int(np.abs(np.min(min_list))/5)
+    plt.hist(min_list, bins=min_bins, align="left")
     plt.yscale("log")
     plt.title("Spatial Minimum of Disturbance", fontsize=16)
     plt.xlabel("Minimum Disturbance (nT)", fontsize=14)
@@ -113,6 +122,6 @@ if __name__ == "__main__":
     plt.xticks(fontsize=14)
     plt.tight_layout()
     plt.legend()
-    plt.savefig(stats_plots_location + "min.png")
+    plt.savefig(stats_plots_location + "min.svg")
 
     print(f"Your metrology plots are ready in {stats_plots_location}")
