@@ -63,14 +63,14 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
              label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="left", density=True)
     if log_y:
         plt.yscale("log")
-    plt.title("Number of Identified LMPs", fontsize=16)
-    plt.xlabel("# of LMPs", fontsize=14)
+    plt.title("Number of Identified LGMDs", fontsize=16)
+    plt.xlabel("# of LGMDs", fontsize=14)
     plt.ylabel("Relative frequency of occurrence", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "num_of_blobs.svg")
+    plt.savefig(stats_plots_location + "num_of_blobs.pdf")
     full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(8), density=True)
     smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(8), density=True)
     smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(8), density=True)
@@ -80,15 +80,15 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="center")
     kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
     kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
-    print("Number of LMPs")
+    print("Number of LGMDs")
     print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
     print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
     # plt.yscale("log")
-    plt.title("Solar Cycle Phase Difference in Number of LMPs"
+    plt.title("Solar Cycle Phase Difference in Number of LGMDs"
               "\n$J_{KL}$"+f"={kl:.4f}", fontsize=16)
     plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
-    plt.xlabel("# of LMPs", fontsize=14)
-    plt.savefig(stats_plots_location + "num_of_blobs_diffs.svg")
+    plt.xlabel("# of LGMDs", fontsize=14)
+    plt.savefig(stats_plots_location + "num_of_blobs_diffs.pdf")
 
 
 def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
@@ -107,15 +107,15 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     plt.hist(sizes_max, bins=num_bins, histtype="step", label="Solar Maximum", align="left", density=True)
     if log_y:
         plt.yscale("log")
-    plt.title("LMP Sizes", fontsize=16)
-    plt.xlabel("LMP Perimeter (km)", fontsize=14)
+    plt.title("LGMD Sizes", fontsize=16)
+    plt.xlabel("LGMD Perimeter (km)", fontsize=14)
     plt.ylabel("Relative frequency of occurrence", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     # plt.xlim(2300,2900)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.svg")
+    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.pdf")
     full, bins, _patches = plt.hist(sizes_full, bins=num_bins, density=True)
     smin, bins, _patches = plt.hist(sizes_min, bins=num_bins, density=True)
     smax, bins, _patches = plt.hist(sizes_max, bins=num_bins, density=True)
@@ -125,14 +125,14 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="edge")
     kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
     kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
-    print("LMP Sizes")
+    print("LGMD Sizes")
     print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
     print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
     # plt.yscale("log")
     plt.title("Solar Cycle Phase $J_{KL}$"+f"={kl:.4f}", fontsize=16)
     plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
-    plt.xlabel("LMP Perimeter (km)", fontsize=14)
-    plt.savefig(stats_plots_location + f"blob_size_diffs_{n_sec_lat}by{n_sec_lon}.svg")
+    plt.xlabel("LGMD Perimeter (km)", fontsize=14)
+    plt.savefig(stats_plots_location + f"blob_size_diffs_{n_sec_lat}by{n_sec_lon}.pdf")
 
 
 def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
@@ -144,14 +144,14 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.hist(np.log10(ars_max), bins=100, histtype="step", label="Solar Maximum", align="left", density=True)
     if log_y:
         plt.yscale("log")
-    plt.title("LMP Aspect Ratios", fontsize=16)
+    plt.title("LGMD Aspect Ratios", fontsize=16)
     plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
     plt.ylabel("Relative frequency of occurrence", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.svg")
+    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.pdf")
     full, bins, _patches = plt.hist(np.log10(ars_full), bins=50, density=True)
     smin, bins, _patches = plt.hist(np.log10(ars_min), bins=50, density=True)
     smax, bins, _patches = plt.hist(np.log10(ars_max), bins=50, density=True)
@@ -166,11 +166,11 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
     print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
     # plt.yscale("log")
-    plt.title("Solar Cycle Phase Difference in LMP Aspect Ratios"
+    plt.title("Solar Cycle Phase Difference in LGMD Aspect Ratios"
             "\n$J_{KL}$"+f"={kl:.4f}", fontsize=16)
     plt.ylabel("Non-integrated $J_{KL}(S_{max}||S_{min})$", fontsize=14)
     plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
-    plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.svg")
+    plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.pdf")
 
 
 def stats_analysis(config_dict):
@@ -302,7 +302,7 @@ def stats_analysis(config_dict):
                     anomaly_coords.append([np.nan, np.nan])
 
         if plot_interps and (timestep % plot_every_n_interps == 0) and (len(this_perimeters) != 0):
-            plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.svg")
+            plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.pdf")
         perimeters.append(this_perimeters)
         aspect_ratios.append(this_aspect_ratios)
 
@@ -322,26 +322,26 @@ def stats_analysis(config_dict):
             if len(perimeters[timestep]) > 0:  # If there are any perimeters
                 perimeter_means[timestep] = np.mean(perimeters[timestep])
                 ar_means[timestep] = np.mean(np.log10(aspect_ratios[timestep]))
-        num_storm_lmps = pd.DataFrame(num_of_perimeters_list, index=timestamps)
+        num_storm_lgmds = pd.DataFrame(num_of_perimeters_list, index=timestamps)
         perimeter_means = pd.DataFrame(perimeter_means, index=timestamps)
         ar_means = pd.DataFrame(ar_means, index=timestamps)
         timestamps = timestamps[(timestamps >= stime) & (timestamps <= etime)]
-        num_storm_lmps = num_storm_lmps[(num_storm_lmps.index >= stime) & (num_storm_lmps.index <= etime)]
+        num_storm_lgmds = num_storm_lgmds[(num_storm_lgmds.index >= stime) & (num_storm_lgmds.index <= etime)]
         perimeter_means = perimeter_means[(perimeter_means.index >= stime) & (perimeter_means.index <= etime)]
         ar_means = ar_means[(ar_means.index >= stime) & (ar_means.index <= etime)]
         index_data = index_data.loc[perimeter_means.index]
         corr_str = correlation_with_index(perimeter_means, index_data)
-        var_axs[0].plot(timestamps, num_storm_lmps, c="black")
+        var_axs[0].plot(timestamps, num_storm_lgmds, c="black")
         index_axs[0].plot(timestamps, index_data, c="green")
         var_axs[1].plot(timestamps, perimeter_means, c="black")
         index_axs[1].plot(timestamps, index_data, c="green")
         var_axs[2].plot(timestamps, ar_means, c="black")
         index_axs[2].plot(timestamps, index_data, c="green")
         # Add correlation values to legend in a hacky way
-        var_axs[0].plot([], [], ' ', label=f"r={correlation_with_index(num_storm_lmps, index_data):.2f}")
+        var_axs[0].plot([], [], ' ', label=f"r={correlation_with_index(num_storm_lgmds, index_data):.2f}")
         var_axs[1].plot([], [], ' ', label=f"r={correlation_with_index(perimeter_means, index_data):.2f}")
         var_axs[2].plot([], [], ' ', label=f"r={correlation_with_index(ar_means, index_data):.2f}")
-        # fig.suptitle(f"LMP Sizes (Example Storm) (r={corr_str})",
+        # fig.suptitle(f"LGMD Sizes (Example Storm) (r={corr_str})",
         #              fontsize=16)
         var_axs[0].set_ylabel("Number", fontsize=14)
         var_axs[1].set_ylabel(f"Mean Perimeter (km)", fontsize=14)
@@ -361,7 +361,7 @@ def stats_analysis(config_dict):
             var_axs[this_plot].legend(fontsize=14)
         plt.subplots_adjust(hspace=0)
         plt.tight_layout()
-        plt.savefig(stats_plots_location + "blob_size_timeseries.svg")
+        plt.savefig(stats_plots_location + "blob_size_timeseries.pdf")
     except ValueError:
         print('#'*8+"\nWarning!\nSkipping example storm plot because there is no data for it.\n"
                     "Ensure the storm dates solar_cycle_phase are set correctly.\n"+'#'*8)
@@ -382,7 +382,7 @@ def stats_analysis(config_dict):
     plt.legend(loc="upper left", prop={'size': 14}, handles=[centroids, station_scatter, rect])
     ax.gridlines(draw_labels=False)
     ax.coastlines()
-    plt.savefig(stats_plots_location + "anomaly_locs.svg")
+    plt.savefig(stats_plots_location + "anomaly_locs.pdf")
 
     return num_of_perimeters_list, all_perimeter_sizes_list, all_ars_list
 
