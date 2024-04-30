@@ -52,7 +52,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "mean.svg")
+    plt.savefig(stats_plots_location + "mean.pdf")
 
     plt.cla()
     plt.hist(std_list, bins=int(np.max(std_list)/5), align="left")
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "std.svg")
+    plt.savefig(stats_plots_location + "std.pdf")
 
     plt.cla()
     plt.hist(mean_deviation_list, bins=int(np.max(mean_deviation_list)/5), align="left")
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "mean_deviation.svg")
+    plt.savefig(stats_plots_location + "mean_deviation.pdf")
 
     plt.cla()
     plt.hist(rms_deviation_list, bins=int(np.max(rms_deviation_list)/5), align="left")
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "rms_deviation.svg")
+    plt.savefig(stats_plots_location + "rms_deviation.pdf")
 
     plt.cla()
     plt.hist(max_list, bins=int(np.max(max_list)/5), align="left")
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     plt.xticks(fontsize=14)
     plt.tight_layout()
     plt.legend()
-    plt.savefig(stats_plots_location + "max.svg")
+    plt.savefig(stats_plots_location + "max.pdf")
 
     plt.cla()
     if B_param == "HORIZONTAL":
@@ -122,6 +122,6 @@ if __name__ == "__main__":
     plt.xticks(fontsize=14)
     plt.tight_layout()
     plt.legend()
-    plt.savefig(stats_plots_location + "min.svg")
+    plt.savefig(stats_plots_location + "min.pdf")
 
     print(f"Your metrology plots are ready in {stats_plots_location}")
