@@ -98,7 +98,6 @@ if __name__ == "__main__":
     B_param = "dbn_geo"
     contour_level = 25.95
     omni_feature = "SYM_H"
-    plot_every_n_interps = 5000
     solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
     stats_plots_location = "stats_plots/"
     interp_plots_location = "interp_plots/"
