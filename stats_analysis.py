@@ -6,7 +6,7 @@ import cartopy.crs as ccrs
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import haversine_distances
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, mode
 from skimage import measure
 import tqdm
 import preprocessing
@@ -58,7 +58,7 @@ def kl_divergence(max_series, min_series, bins, integrated=True):
 def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log_y=True):
     num_of_variables = (len(num_blobs_full) > 0) + (len(num_blobs_min) > 0) + (len(num_blobs_max) > 0)
     assert num_of_variables > 0
-    plt.figure(figsize=(5.5, 5))
+    plt.figure(figsize=(5.5, 4))
     plt.hist([num_blobs_full, num_blobs_min, num_blobs_max], bins=np.arange(8),
              label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="left", density=True)
     if log_y:
@@ -292,7 +292,10 @@ def stats_analysis(config_dict):
             if plot_interps and (timestep % plot_every_n_interps == 0):  # Only plot if plotting is enabled
                 ax2.plot(this_contour_lons, this_contour_lats, linewidth=4, color='black', transform=ccrs.PlateCarree())
             if contour[0, 0] == contour[-1, 0] and contour[0, 1] == contour[-1, 1]:  # If contour is closed
-                p = calculate_perimeter(contour.copy(), poi_coords_list=poi_coords_list)
+                contour_copy = contour.copy()
+                contour_copy[:, 0] = contour_copy[:, 0].astype(int)
+                contour_copy[:, 1] = contour_copy[:, 1].astype(int)
+                p = calculate_perimeter(contour_copy, poi_coords_list=poi_coords_list)
                 ar = calculate_aspect_ratio(contour.copy(), poi_coords_list=poi_coords_list)
                 this_perimeters.append(p)
                 this_aspect_ratios.append(ar)
@@ -309,6 +312,51 @@ def stats_analysis(config_dict):
     num_of_perimeters_list = [len(timestep) for timestep in perimeters]
     all_perimeter_sizes_list = [perimeter for timestep in perimeters for perimeter in timestep]
     all_ars_list = [ar for timestep in aspect_ratios for ar in timestep]
+
+    one_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 1 for perimeter in timestep]
+    two_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 2 for perimeter in timestep]
+    three_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 3 for perimeter in timestep]
+    four_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 4 for perimeter in timestep]
+    five_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 5 for perimeter in timestep]
+    six_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 6 for perimeter in timestep]
+
+    plt.figure()
+    plt.violinplot([one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
+                    five_perimeter_sizes, six_perimeter_sizes], showmedians=True)
+    plt.yscale("log")
+    plt.ylabel("Perimeter (km)", fontsize=14)
+    plt.xlabel("Number of LGMDs", fontsize=14)
+    plt.savefig(stats_plots_location + "violin_perimeter_sizes.pdf")
+
+    one_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 1 for ar in timestep]
+    two_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 2 for ar in timestep]
+    three_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 3 for ar in timestep]
+    four_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 4 for ar in timestep]
+    five_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 5 for ar in timestep]
+    six_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 6 for ar in timestep]
+
+    plt.figure()
+    plt.violinplot([one_perimeter_ars, two_perimeter_ars, three_perimeter_ars, four_perimeter_ars, five_perimeter_ars,
+                    six_perimeter_ars], showmedians=True)
+    plt.ylabel("log(Aspect Ratio)", fontsize=14)
+    plt.xlabel("Number of LGMDs", fontsize=14)
+    plt.savefig(stats_plots_location + "violin_aspect_ratios.pdf")
+
+    print("Perimeters:", np.median(one_perimeter_sizes), np.median(two_perimeter_sizes), np.median(three_perimeter_sizes),
+          np.median(four_perimeter_sizes), np.median(five_perimeter_sizes), np.median(six_perimeter_sizes))
+    print("Aspect Ratios:", np.median(one_perimeter_ars), np.median(two_perimeter_ars), np.median(three_perimeter_ars),
+          np.median(four_perimeter_ars), np.median(five_perimeter_ars), np.median(six_perimeter_ars))
+
+    # Print some stats
+    print(f"Solar cycle phase: {solar_cycle_phase}")
+    print(f"Mean perimeter size: {np.mean(all_perimeter_sizes_list):.2f} km")
+    print(f"Median perimeter size: {np.median(all_perimeter_sizes_list):.2f} km")
+    print(f"Maximum perimeter size: {np.max(all_perimeter_sizes_list):.2f} km")
+    print(f"Mode perimeter size: {mode(np.round(all_perimeter_sizes_list, decimals=-1))[0][0]:.2f} km")
+    print(f"Mode aspect ratio: {mode(np.round(all_ars_list, decimals=2))[0][0]:.2f}")
+    print(f"Proportion of log(AR)s less than zero: {len([ar for ar in all_ars_list if np.log10(ar) < 0])/len(all_ars_list):.4f}")
+    print(f"Proportion of times no LGMDs are found: "
+          f"{len([num for num in num_of_perimeters_list if num == 0])/len(num_of_perimeters_list):.4f}")
 
     try:
         stime, etime = pd.to_datetime("2013-03-01 00:00:00"), pd.to_datetime("2013-03-04 00:00:00")
@@ -364,7 +412,7 @@ def stats_analysis(config_dict):
         plt.savefig(stats_plots_location + "blob_size_timeseries.pdf")
     except ValueError:
         print('#'*8+"\nWarning!\nSkipping example storm plot because there is no data for it.\n"
-                    "Ensure the storm dates solar_cycle_phase are set correctly.\n"+'#'*8)
+                    "Ensure the storm dates that determine solar_cycle_phase are set correctly.\n"+'#'*8)
 
     plt.cla()
     plt.figure()
