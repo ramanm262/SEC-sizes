@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.cm as cm
 import matplotlib.patches as patches
+from matplotlib.lines import Line2D
 import cartopy.crs as ccrs
 import pandas as pd
 import numpy as np
@@ -173,6 +174,30 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.pdf")
 
 
+def plot_gm_index_histogram(lgmd_attribute, index_at_interp_time, attribute_name, rolling=False):
+    plt.figure(figsize=(6, 4))
+    combined_df = pd.concat([pd.DataFrame(lgmd_attribute, index=index_at_interp_time.index), index_at_interp_time], axis=1)
+    combined_df.dropna(inplace=True)
+    lgmd_attribute, index_at_interp_time = combined_df.iloc[:, 0], combined_df.iloc[:, 1]
+    plt.hist2d(index_at_interp_time, lgmd_attribute, bins=100)
+    plt.colorbar()
+    plt.title(f"Correlation: {pearsonr(lgmd_attribute, index_at_interp_time)[0]:.4f}", fontsize=16)
+    plt.xlabel(f"{omni_feature}", fontsize=14)
+    plt.ylabel(attribute_name, fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.xlim(0, 700)
+    if attribute_name == "Perimeter":
+        plt.ylim(500, 3400)
+    elif attribute_name == "log(A)":
+        plt.ylim(0.2, 0.8)
+    # else:
+    #     raise ValueError("Invalid attribute name (must be one of 'Number', 'Perimeter', or 'log(A)')")
+    #plt.xlim(-, 500)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + f"{omni_feature}_{attribute_name}"+"_rolling"*rolling+"_histogram.png")
+
+
 def stats_analysis(config_dict):
     syear, eyear = config_dict["syear"], config_dict["eyear"]
     stations_list = config_dict["stations_list"]
@@ -320,14 +345,6 @@ def stats_analysis(config_dict):
     five_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 5 for perimeter in timestep]
     six_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 6 for perimeter in timestep]
 
-    plt.figure()
-    plt.violinplot([one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
-                    five_perimeter_sizes, six_perimeter_sizes], showmedians=True)
-    plt.yscale("log")
-    plt.ylabel("Perimeter (km)", fontsize=14)
-    plt.xlabel("Number of LGMDs", fontsize=14)
-    plt.savefig(stats_plots_location + "violin_perimeter_sizes.pdf")
-
     one_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 1 for ar in timestep]
     two_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 2 for ar in timestep]
     three_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 3 for ar in timestep]
@@ -335,12 +352,58 @@ def stats_analysis(config_dict):
     five_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 5 for ar in timestep]
     six_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 6 for ar in timestep]
 
-    plt.figure()
-    plt.violinplot([one_perimeter_ars, two_perimeter_ars, three_perimeter_ars, four_perimeter_ars, five_perimeter_ars,
-                    six_perimeter_ars], showmedians=True)
-    plt.ylabel("log(Aspect Ratio)", fontsize=14)
-    plt.xlabel("Number of LGMDs", fontsize=14)
-    plt.savefig(stats_plots_location + "violin_aspect_ratios.pdf")
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    perimeter_violin = axs[0].violinplot([one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
+                   five_perimeter_sizes, six_perimeter_sizes], showmedians=True, showextrema=True,
+                   quantiles=[[.05, .95] for _ in range(6)])
+    axs[0].set_yscale("log")
+    axs[0].set_ylabel("Perimeter (km)", fontsize=14)
+    axs[0].set_xlabel("Number of LGMDs", fontsize=14)
+    axs[0].yaxis.set_tick_params(labelsize=14)
+    axs[0].xaxis.set_tick_params(labelsize=14)
+    perimeter_violin["cmedians"].set_edgecolor("black")
+    perimeter_violin["cmedians"].set_linewidth(2)
+    perimeter_violin["cquantiles"].set_edgecolor("darkorange")
+    perimeter_violin["cquantiles"].set_linewidth(2)
+    perimeter_violin["cmaxes"].set_edgecolor("#4daf4a")
+    perimeter_violin["cmins"].set_edgecolor("#4daf4a")
+    perimeter_violin["cmaxes"].set_linewidth(2)
+    perimeter_violin["cmins"].set_linewidth(2)
+    legend_lines = [Line2D([0], [0], color="black", lw=2),
+                    Line2D([0], [0], color="darkorange", lw=2),
+                    Line2D([0], [0], color="#4daf4a", lw=2)]
+    axs[0].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
+    ar_violin = axs[1].violinplot([one_perimeter_ars, two_perimeter_ars, three_perimeter_ars, four_perimeter_ars,
+                                  five_perimeter_ars, six_perimeter_ars], showmedians=True, showextrema=True,
+                                 quantiles=[[.05, .95] for _ in range(6)])
+    axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
+    axs[1].set_xlabel("Number of LGMDs", fontsize=14)
+    axs[1].yaxis.set_tick_params(labelsize=14)
+    axs[1].xaxis.set_tick_params(labelsize=14)
+    ar_violin["cmedians"].set_edgecolor("black")
+    ar_violin["cmedians"].set_linewidth(2)
+    ar_violin["cquantiles"].set_edgecolor("darkorange")
+    ar_violin["cquantiles"].set_linewidth(2)
+    ar_violin["cmaxes"].set_edgecolor("#4daf4a")
+    ar_violin["cmins"].set_edgecolor("#4daf4a")
+    ar_violin["cmaxes"].set_linewidth(2)
+    ar_violin["cmins"].set_linewidth(2)
+    axs[1].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "violin_perimeters_ars.pdf")
+
+    index_at_interp_time = index_data.loc[all_B_interps.index]
+    perimeters_means = [np.mean(timestep) for timestep in perimeters]
+    ar_means = [np.mean(np.log10(timestep)) for timestep in aspect_ratios]
+    plot_gm_index_histogram(num_of_perimeters_list, index_at_interp_time, attribute_name="Number")
+    plot_gm_index_histogram(perimeters_means, index_at_interp_time, attribute_name="Perimeter")
+    plot_gm_index_histogram(ar_means, index_at_interp_time, attribute_name="log(A)")
+
+    min_index_data = index_data.rolling(window=30).min()
+    min_index_data = min_index_data.loc[all_B_interps.index]
+    plot_gm_index_histogram(perimeters_means, min_index_data, attribute_name="Perimeter", rolling=True)
+    plot_gm_index_histogram(ar_means, min_index_data, attribute_name="log(A)", rolling=True)
+
 
     print("Perimeters:", np.median(one_perimeter_sizes), np.median(two_perimeter_sizes), np.median(three_perimeter_sizes),
           np.median(four_perimeter_sizes), np.median(five_perimeter_sizes), np.median(six_perimeter_sizes))
@@ -452,7 +515,7 @@ if __name__ == "__main__":
     epsilon = 0.09323151264778985
     B_param = "dbn_geo"  # "dbn_geo", "dbe_geo", or "HORIZONTAL"
     contour_level = 25.95
-    omni_feature = "SYM_H"
+    omni_feature = "AE_INDEX"
     plot_interps = True
     plot_every_n_interps = 5000
     solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
