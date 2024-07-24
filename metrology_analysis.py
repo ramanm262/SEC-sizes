@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import tqdm
+from scipy.stats import mode
 
 
 # Config variables
@@ -48,9 +49,12 @@ if __name__ == "__main__":
     plt.title("Spatial Mean of Disturbance", fontsize=16)
     plt.xlabel("Mean Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    peak_location = mode(np.round(mean_list, decimals=0))[0][0]
+    plt.axvline(peak_location, color='k', linestyle='dashed', label=f"Mode: {peak_location:.0f} nT")
     # plt.ylim(0, 10000)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(stats_plots_location + "mean.pdf")
 
@@ -60,9 +64,12 @@ if __name__ == "__main__":
     plt.title("Spatial Standard Deviation of Disturbance", fontsize=16)
     plt.xlabel("Standard Deviation of Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    peak_location = mode(np.round(std_list, decimals=0))[0][0]
+    plt.axvline(peak_location, color='k', linestyle='dashed', label=f"Mode: {peak_location:.0f} nT")
     # plt.ylim(0, 5000)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(stats_plots_location + "std.pdf")
 
@@ -72,9 +79,12 @@ if __name__ == "__main__":
     plt.title("Spatial Mean Deviation of Disturbance", fontsize=16)
     plt.xlabel("Mean Deviation of Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    peak_location = mode(np.round(mean_deviation_list, decimals=0))[0][0]
+    plt.axvline(peak_location, color='k', linestyle='dashed', label=f"Mode: {peak_location:.0f} nT")
     # plt.ylim(0, 5000)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(stats_plots_location + "mean_deviation.pdf")
 
@@ -84,9 +94,12 @@ if __name__ == "__main__":
     plt.title("Spatial RMS Deviation of Disturbance", fontsize=16)
     plt.xlabel("RMS Deviation of Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
+    peak_location = mode(np.round(rms_deviation_list, decimals=0))[0][0]
+    plt.axvline(peak_location, color='k', linestyle='dashed', label=f"Mode: {peak_location:.0f} nT")
     # plt.ylim(0, 5000)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
+    plt.legend()
     plt.tight_layout()
     plt.savefig(stats_plots_location + "rms_deviation.pdf")
 
@@ -96,8 +109,10 @@ if __name__ == "__main__":
     plt.title("Spatial Maximum of Disturbance", fontsize=16)
     plt.xlabel("Maximum Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    percentile = np.percentile(max_list, 50)
-    plt.axvline(percentile, color='k', linestyle='dashed', label=f"Median: {percentile:.2f}")
+    # percentile = np.percentile(max_list, 50)
+    # plt.axvline(percentile, color='k', linestyle='dashed', label=f"Median: {percentile:.2f}")
+    peak_location = mode(np.round(max_list, decimals=0))[0][0]
+    plt.axvline(peak_location, color='k', linestyle='dashed', label=f"Mode: {peak_location:.0f} nT")
     # plt.ylim(0, 2200)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
@@ -115,8 +130,10 @@ if __name__ == "__main__":
     plt.title("Spatial Minimum of Disturbance", fontsize=16)
     plt.xlabel("Minimum Disturbance (nT)", fontsize=14)
     plt.ylabel(f"# of occurrences in {syear}{('-'+str(eyear))*(syear!=eyear)}", fontsize=14)
-    percentile = np.percentile(min_list, 50)
-    plt.axvline(percentile, color='k', linestyle='dashed', label=f"Median: {percentile:.2f}")
+    # percentile = np.percentile(min_list, 50)
+    # plt.axvline(percentile, color='k', linestyle='dashed', label=f"Median: {percentile:.2f}")
+    peak_location = mode(np.round(min_list, decimals=0))[0][0]
+    plt.axvline(peak_location, color='k', linestyle='dashed', label=f"Mode: {peak_location:.0f} nT")
     # plt.ylim(0, 2200)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
