@@ -2,6 +2,8 @@ from sec import *
 import preprocessing
 from multiprocessing import Pool
 
+# 10x35 SEC grid and 14x32 POI grid for 2009-2019 with num_mp_procs=16 took 256 hours
+
 
 syear, eyear = 2009, 2019
 n_sec_lat, n_sec_lon = 10, 35  # Number of rows and columns respectively of SECSs that will exist in the grid
