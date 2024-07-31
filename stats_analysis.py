@@ -52,7 +52,7 @@ def kl_divergence(max_series, min_series, bins, integrated=True):
         return (np.sum(max_series * np.log(max_series / min_series)) +
                 np.sum(min_series * np.log(min_series / max_series)), bins)
     else:
-        # return np.abs(max_series - min_series), bins
+        # return max_series - min_series, bins
         return max_series * np.log(max_series / min_series) + min_series * np.log(min_series / max_series), bins
 
 
@@ -174,12 +174,42 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.savefig(stats_plots_location + f"aspect_ratio_diffs_{n_sec_lat}by{n_sec_lon}.pdf")
 
 
+def plot_num_and_sizes(num_full, sizes_full, log_y=True):
+    fig, axs = plt.subplots(1, 2, figsize=(10.5, 4), width_ratios=[1, 1.5])
+    num_bins = 100
+    axs[0].hist(num_full, bins=np.arange(8), align="left", density=True)
+    axs[0].set_title("Number of Identified LGMDs", fontsize=16)
+    axs[0].set_xlabel("# of LGMDs", fontsize=14)
+    axs[0].set_ylabel("Relative frequency of occurrence", fontsize=14)
+    axs[1].hist(sizes_full, bins=int(np.max(sizes_full)/50), align="left", density=True)
+    axs[1].set_title("LGMD Sizes", fontsize=16)
+    axs[1].set_xlabel("LGMD Perimeter (km)", fontsize=14)
+    axs[1].set_ylabel("Relative frequency of occurrence", fontsize=14)
+    if log_y:
+        axs[0].set_yscale("log")
+        axs[1].set_yscale("log")
+    plt.tight_layout()
+    # Label the subplots a and b
+    axs[0].text(.9, .9, "a", transform=axs[0].transAxes, fontsize=20, fontweight='bold', va='top')
+    axs[1].text(.9, .9, "b", transform=axs[1].transAxes, fontsize=20, fontweight='bold', va='top')
+    plt.savefig(stats_plots_location + "combined_num_and_sizes.pdf")
+
+
 def plot_gm_index_histogram(lgmd_attribute, index_at_interp_time, attribute_name, rolling=False):
     plt.figure(figsize=(6, 4))
     combined_df = pd.concat([pd.DataFrame(lgmd_attribute, index=index_at_interp_time.index), index_at_interp_time], axis=1)
     combined_df.dropna(inplace=True)
     lgmd_attribute, index_at_interp_time = combined_df.iloc[:, 0], combined_df.iloc[:, 1]
-    plt.hist2d(index_at_interp_time, lgmd_attribute, bins=100)
+    bins = 100
+    if attribute_name == "Perimeter":
+        plt.ylim(500, 3400)
+    elif attribute_name == "log(A)":
+        plt.ylim(0.2, 0.8)
+    elif attribute_name == "Number":
+        bins = (100, 6)
+    else:
+        raise ValueError("Invalid attribute name (must be one of 'Number', 'Perimeter', or 'log(A)')")
+    plt.hist2d(index_at_interp_time, lgmd_attribute, bins=bins)
     plt.colorbar()
     plt.title(f"Correlation: {pearsonr(lgmd_attribute, index_at_interp_time)[0]:.4f}", fontsize=16)
     plt.xlabel(f"{omni_feature}", fontsize=14)
@@ -187,13 +217,6 @@ def plot_gm_index_histogram(lgmd_attribute, index_at_interp_time, attribute_name
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.xlim(0, 700)
-    if attribute_name == "Perimeter":
-        plt.ylim(500, 3400)
-    elif attribute_name == "log(A)":
-        plt.ylim(0.2, 0.8)
-    # else:
-    #     raise ValueError("Invalid attribute name (must be one of 'Number', 'Perimeter', or 'log(A)')")
-    #plt.xlim(-, 500)
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"{omni_feature}_{attribute_name}"+"_rolling"*rolling+"_histogram.png")
 
@@ -321,7 +344,7 @@ def stats_analysis(config_dict):
                 contour_copy[:, 0] = contour_copy[:, 0].astype(int)
                 contour_copy[:, 1] = contour_copy[:, 1].astype(int)
                 p = calculate_perimeter(contour_copy, poi_coords_list=poi_coords_list)
-                ar = calculate_aspect_ratio(contour.copy(), poi_coords_list=poi_coords_list)
+                ar = calculate_aspect_ratio(contour_copy, poi_coords_list=poi_coords_list)
                 this_perimeters.append(p)
                 this_aspect_ratios.append(ar)
                 if 2300 < p < 2900:
@@ -337,6 +360,7 @@ def stats_analysis(config_dict):
     num_of_perimeters_list = [len(timestep) for timestep in perimeters]
     all_perimeter_sizes_list = [perimeter for timestep in perimeters for perimeter in timestep]
     all_ars_list = [ar for timestep in aspect_ratios for ar in timestep]
+    all_log_ars_list = [np.log10(ar) for timestep in aspect_ratios for ar in timestep]
 
     one_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 1 for perimeter in timestep]
     two_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 2 for perimeter in timestep]
@@ -352,7 +376,7 @@ def stats_analysis(config_dict):
     five_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 5 for ar in timestep]
     six_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 6 for ar in timestep]
 
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    fig, axs = plt.subplots(1, 3, figsize=(14, 5))
     perimeter_violin = axs[0].violinplot([one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
                    five_perimeter_sizes, six_perimeter_sizes], showmedians=True, showextrema=True,
                    quantiles=[[.05, .95] for _ in range(6)])
@@ -389,6 +413,17 @@ def stats_analysis(config_dict):
     ar_violin["cmaxes"].set_linewidth(2)
     ar_violin["cmins"].set_linewidth(2)
     axs[1].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
+    axs[2].hist2d(all_perimeter_sizes_list, all_log_ars_list, bins=[160, 200])
+    axs[2].set_xlim(400, 4000)
+    axs[2].set_ylim(.2, .8)
+    axs[2].set_xlabel("Perimeter (km)", fontsize=14)
+    axs[2].set_ylabel("log(Aspect Ratio)", fontsize=14)
+    axs[2].yaxis.set_tick_params(labelsize=14)
+    axs[2].xaxis.set_tick_params(labelsize=14)
+    divider = make_axes_locatable(axs[2])
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    plt.colorbar(axs[2].collections[0], cax=cax, orientation='vertical')
+    cax.set_title("Counts", fontsize=14)
     plt.tight_layout()
     plt.savefig(stats_plots_location + "violin_perimeters_ars.pdf")
 
@@ -403,6 +438,33 @@ def stats_analysis(config_dict):
     min_index_data = min_index_data.loc[all_B_interps.index]
     plot_gm_index_histogram(perimeters_means, min_index_data, attribute_name="Perimeter", rolling=True)
     plot_gm_index_histogram(ar_means, min_index_data, attribute_name="log(A)", rolling=True)
+
+    mlt_data = (all_B_interps.index.hour - 6) % 24  # UTC to MST conversion
+    concatenated_data = pd.concat([pd.DataFrame(mlt_data, index=all_B_interps.index),
+                                      pd.DataFrame(perimeters_means, index=all_B_interps.index)], axis=1)
+    concatenated_data.dropna(inplace=True)
+    mlt_data = concatenated_data.iloc[:, 0]
+    perimeters_means = concatenated_data.iloc[:, 1]
+    plt.figure(figsize=(6, 4))
+    plt.hist2d(mlt_data, perimeters_means, bins=[24, 50])
+    plt.ylim(280, 5000)
+    plt.colorbar()
+    plt.xlabel("MLT", fontsize=14)
+    plt.ylabel("Per-Minute Mean LGMD Perimeter (km)", fontsize=14)
+    plt.savefig(stats_plots_location + "mlt_perimeter_means_histogram.png")
+
+    concatenated_data = pd.concat([pd.DataFrame(mlt_data, index=all_B_interps.index),
+                                      pd.DataFrame(ar_means, index=all_B_interps.index)], axis=1)
+    concatenated_data.dropna(inplace=True)
+    mlt_data = concatenated_data.iloc[:, 0]
+    ar_means = concatenated_data.iloc[:, 1]
+    plt.figure(figsize=(6, 4))
+    plt.hist2d(mlt_data, ar_means, bins=[24, 160])
+    plt.ylim(.2, .8)
+    plt.colorbar()
+    plt.xlabel("MLT", fontsize=14)
+    plt.ylabel("Per-Minute Mean LGMD Aspect Ratio (km)", fontsize=14)
+    plt.savefig(stats_plots_location + "mlt_ar_means_histogram.png")
 
 
     print("Perimeters:", np.median(one_perimeter_sizes), np.median(two_perimeter_sizes), np.median(three_perimeter_sizes),
@@ -539,7 +601,7 @@ if __name__ == "__main__":
     config_dict["solar_cycle_phase"] = "maximum"
     num_perimeters_max, sizes_perimeters_max, ars_max = stats_analysis(config_dict)
 
-    plot_num_of_blobs(num_blobs_full=num_perimeters_full, num_blobs_min=num_perimeters_min,
-                      num_blobs_max=num_perimeters_max)
+    plot_num_of_blobs(num_blobs_full=num_perimeters_full, num_blobs_min=num_perimeters_min, num_blobs_max=num_perimeters_max)
     plot_blob_sizes(sizes_full=sizes_perimeters_full, sizes_min=sizes_perimeters_min, sizes_max=sizes_perimeters_max)
     plot_aspect_ratios(ars_full=ars_full, ars_min=ars_min, ars_max=ars_max)
+    plot_num_and_sizes(num_full=num_perimeters_full, sizes_full=sizes_perimeters_full)
