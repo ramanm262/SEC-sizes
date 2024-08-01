@@ -4,6 +4,12 @@ import numpy as np
 import tqdm
 from scipy.stats import mode
 
+'''
+This is a plotting script that generates auxiliary statistics plots, many of which are included in the Supporting
+Information in the paper. Commented-out code below is not necessary for the script to run, but may be useful
+to uncomment depending on your purposes.
+'''
+
 
 # Config variables
 syear, eyear = 2009, 2019
@@ -30,7 +36,8 @@ if __name__ == "__main__":
         all_BN_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5","dbn_geo")
         all_BE_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", "dbe_geo")
         all_B_interps = np.sqrt(all_BN_interps**2 + all_BE_interps**2)
-        del all_BN_interps, all_BE_interps    # Remove timestamps that are double-counted by immediately successive storms
+        del all_BN_interps, all_BE_interps
+    # Remove timestamps that are double-counted by immediately successive storms
     all_B_interps.drop_duplicates(inplace=True)
 
     mean_list, std_list, rms_deviation_list, mean_deviation_list, max_list, min_list = [], [], [], [], [], []
