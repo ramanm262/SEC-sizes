@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.cm as cm
-import matplotlib.patches as patches
 from matplotlib.lines import Line2D
 import cartopy.crs as ccrs
 import pandas as pd
@@ -14,6 +13,9 @@ import preprocessing
 
 
 def calculate_perimeter(contour, poi_coords_list, r=6378100):
+    """
+    Computes the perimeter of a single LGMD.
+    """
     rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
     rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
     contour[:, 0], contour[:, 1] = (contour[:, 0] * rad_between_rows + poi_coords_list[0][0] * np.pi / 180,
@@ -25,6 +27,9 @@ def calculate_perimeter(contour, poi_coords_list, r=6378100):
 
 
 def calculate_aspect_ratio(contour, poi_coords_list):
+    """
+    Computes the aspect ratio of a single LGMD.
+    """
     rad_between_rows = np.pi * (poi_coords_list[0][1] - poi_coords_list[0][0]) / 180  # Given a regular rectangular grid
     rad_between_cols = np.pi * (poi_coords_list[1][1] - poi_coords_list[1][0]) / 180
     contour[:, 0], contour[:, 1] = (contour[:, 0] * rad_between_rows + poi_coords_list[0][0] * np.pi / 180,
@@ -35,24 +40,27 @@ def calculate_aspect_ratio(contour, poi_coords_list):
 
 
 def correlation_with_index(param_series, index_series):
+    """
+    Computes the linear correlation between a geomagnetic index timeseries and a timeseries of an LGMD attribute.
+    """
     combined_df = pd.concat([param_series, index_series], axis=1)
     combined_df = combined_df[combined_df[0].notna()]
     return pearsonr(combined_df.iloc[:, 0], combined_df.iloc[:, 1])[0]
 
 
 def kl_divergence(max_series, min_series, bins, integrated=True):
-    '''
-    Calculates the symmetrized Kullback-Leibler divergence between two series
-    '''
+    """
+    Calculates the symmetrized Kullback-Leibler divergence between two series.
+    """
     to_keep = np.where((min_series != 0) & (max_series != 0))
     max_series, min_series = max_series[to_keep], min_series[to_keep]
     bins = bins[to_keep]
     if integrated:
-        # return np.sum(np.abs(max_series - min_series)), bins
+        # return np.sum(np.abs(max_series - min_series)), bins  # Uncomment to use the total variation instead
         return (np.sum(max_series * np.log(max_series / min_series)) +
                 np.sum(min_series * np.log(min_series / max_series)), bins)
     else:
-        # return max_series - min_series, bins
+        # return max_series - min_series, bins  # Uncomment to use the total variation instead
         return max_series * np.log(max_series / min_series) + min_series * np.log(min_series / max_series), bins
 
 
@@ -239,11 +247,14 @@ def stats_analysis(config_dict):
     stats_plots_location = config_dict["stats_plots_location"]
     interp_plots_location = config_dict["interp_plots_location"]
 
+    # Use the right dataset depending on your preference indicated in B_param
     if B_param == "dbn_geo" or B_param == "dbe_geo":
         all_B_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", B_param)
     elif B_param == "HORIZONTAL":
-        all_BN_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5","dbn_geo")
-        all_BE_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5", "dbe_geo")
+        all_BN_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5",
+                                     "dbn_geo")
+        all_BE_interps = pd.read_hdf(f"all_B_interps_{n_sec_lat}by{n_sec_lon}_{syear}-{eyear}.h5",
+                                     "dbe_geo")
         all_B_interps = np.sqrt(all_BN_interps**2 + all_BE_interps**2)
         del all_BN_interps, all_BE_interps
 
@@ -259,6 +270,7 @@ def stats_analysis(config_dict):
             all_poi_lons.append(lon)
     poi_lons_mesh, poi_lats_mesh = np.meshgrid(poi_coords_list[1], poi_coords_list[0])
 
+    # Set up the figure and axes that will be used to generate the interpolation plots in the interp_plots/ directory
     projection = ccrs.AlbersEqualArea(central_latitude=50, central_longitude=255)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 5), sharex=True, sharey=True,
                                    subplot_kw={"projection": projection})
@@ -275,8 +287,8 @@ def stats_analysis(config_dict):
                                           vmax=np.percentile(all_B_interps, 95))
     elif B_param == "HORIZONTAL":
         color_map = cm.viridis
-        norm = plt.cm.colors.TwoSlopeNorm(vcenter=np.percentile(all_B_interps, 30), vmin=np.percentile(all_B_interps, 0),
-                                            vmax=np.percentile(all_B_interps, 95))
+        norm = plt.cm.colors.TwoSlopeNorm(vcenter=np.percentile(all_B_interps, 30),
+                                          vmin=np.percentile(all_B_interps,0), vmax=np.percentile(all_B_interps, 95))
     scalarmappable = plt.cm.ScalarMappable(norm=norm, cmap=color_map)
     station_scatter = ax1.scatter(station_coords_list[1], station_coords_list[0],
                                   c=np.random.rand(len(station_coords_list[0])), s=80, cmap=color_map,
@@ -301,16 +313,17 @@ def stats_analysis(config_dict):
                                           (all_B_interps.index < pd.to_datetime("2014-07-01"))]
     else:
         print("Using data from the entire solar cycle")
-    mag_data = mag_data.loc[all_B_interps.index]
-    # index_data is pared to the same index later in this script
+    mag_data = mag_data.loc[all_B_interps.index]  # index_data is pared to the same index later in this script
 
-    anomaly_coords = []
+    # Loop through each timestep. Plot some of the heatmaps and extract information on LGMDs.
     perimeters = []
     aspect_ratios = []
     for timestep in tqdm.trange(len(all_B_interps),
                                 desc=f'Generating heatmaps for solar cycle phase "{solar_cycle_phase}"'):
+        # We take the absolute value of the heatmaps so that contours are computed at the same level for pos and neg
         heatmap_data = np.abs(np.array(all_B_interps.iloc[timestep]).reshape((n_poi_lat, n_poi_lon)))
 
+        # Plot the interpolation, but not always, since we don't want too many plots
         if plot_interps and (timestep % plot_every_n_interps == 0):
             ax1.cla()
             ax2.cla()
@@ -329,9 +342,11 @@ def stats_analysis(config_dict):
             cb.ax.set_title('nT', fontsize=16)
             cb.ax.tick_params(labelsize=14)
 
+        # Now we find the contours! This is where the good stuff happens.
         contours = measure.find_contours(heatmap_data, level=contour_level)
         # Each element of the resulting list is a list of coords in row, col format (not degrees)
 
+        # Plot the contours on the interpolation plot and calculate their perimeter and aspect ratios
         this_perimeters = []
         this_aspect_ratios = []
         for contour in contours:
@@ -347,10 +362,6 @@ def stats_analysis(config_dict):
                 ar = calculate_aspect_ratio(contour_copy, poi_coords_list=poi_coords_list)
                 this_perimeters.append(p)
                 this_aspect_ratios.append(ar)
-                if 2300 < p < 2900:
-                    anomaly_coords.append([np.mean(this_contour_lats), np.mean(this_contour_lons)])
-                else:
-                    anomaly_coords.append([np.nan, np.nan])
 
         if plot_interps and (timestep % plot_every_n_interps == 0) and (len(this_perimeters) != 0):
             plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.pdf")
@@ -362,6 +373,7 @@ def stats_analysis(config_dict):
     all_ars_list = [ar for timestep in aspect_ratios for ar in timestep]
     all_log_ars_list = [np.log10(ar) for timestep in aspect_ratios for ar in timestep]
 
+    # Make a list of perimeters where there are only 1, 2, 3, 4, 5, or 6 LGMDs
     one_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 1 for perimeter in timestep]
     two_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 2 for perimeter in timestep]
     three_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 3 for perimeter in timestep]
@@ -369,12 +381,14 @@ def stats_analysis(config_dict):
     five_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 5 for perimeter in timestep]
     six_perimeter_sizes = [perimeter for timestep in perimeters if len(timestep) == 6 for perimeter in timestep]
 
+    # Make a list of aspect ratios where there are only 1, 2, 3, 4, 5, or 6 LGMDs
     one_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 1 for ar in timestep]
     two_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 2 for ar in timestep]
     three_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 3 for ar in timestep]
     four_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 4 for ar in timestep]
     five_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 5 for ar in timestep]
     six_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 6 for ar in timestep]
+
 
     fig, axs = plt.subplots(1, 3, figsize=(14, 5))
     perimeter_violin = axs[0].violinplot([one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
@@ -538,24 +552,6 @@ def stats_analysis(config_dict):
     except ValueError:
         print('#'*8+"\nWarning!\nSkipping example storm plot because there is no data for it.\n"
                     "Ensure the storm dates that determine solar_cycle_phase are set correctly.\n"+'#'*8)
-
-    plt.cla()
-    plt.figure()
-    fig, ax = plt.subplots(1, 1, figsize=(10, 5), subplot_kw={"projection": projection})
-    ax.set_extent((w_lon+10, e_lon-10, s_lat+10, n_lat-5))
-    ax.set_title(f'Locations of Anomalies', fontsize=20)
-    centroids = ax.scatter([coords[1] for coords in anomaly_coords],
-                           [coords[0] for coords in anomaly_coords],
-                           c="orange", s=20, transform=ccrs.PlateCarree(),
-                           label="Anomaly Centroids")
-    station_scatter = ax.scatter(station_coords_list[1], station_coords_list[0], c="green", marker='*',
-                                 s=160, transform=ccrs.PlateCarree(), label="Magnetometer Stations")
-    rect = ax.add_patch(patches.Rectangle((230.5, 45.5), 50, 10, facecolor="#1f77b4",
-                                          alpha=0.2, transform=ccrs.PlateCarree(), label="Current System Grid Extent"))
-    plt.legend(loc="upper left", prop={'size': 14}, handles=[centroids, station_scatter, rect])
-    ax.gridlines(draw_labels=False)
-    ax.coastlines()
-    plt.savefig(stats_plots_location + "anomaly_locs.pdf")
 
     return num_of_perimeters_list, all_perimeter_sizes_list, all_ars_list
 
