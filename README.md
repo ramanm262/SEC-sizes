@@ -1,4 +1,4 @@
-# SEC-sizes
+# SEC-sizes [![DOI](https://zenodo.org/badge/719155607.svg)](https://zenodo.org/doi/10.5281/zenodo.13227147)
 Code repository for the paper "Localized Geomagnetic Disturbances: A Statistical Analysis 
 of Spatial Scale" by R. Mukundan, A. Keesee, J. Marchezi, V. Pinto, M. Coughlan, and D. 
 Hampton (2024). For anay questions regarding this code, please contact
