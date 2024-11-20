@@ -54,6 +54,13 @@ field interpolation with the Spherical Elementary Current Systems method. This i
 Current System scaling factor calculation, magnetic field computation from those 
 scaling factors, and coordinate system transformations for vectors.
 
+### [`station_distances.py`](station_distances.py)
+A small, independent routine that calculates the distances between all pairs of
+magnetometer stations in the dataset. The output of this file is not used by any
+other script; it is just for ensuring that the inter-station separations are
+sufficiently small compared to the typical LGMD size. Run this script separately
+after running `stats_analysis.py` to make sure that this is the case.
+
 ### [`stormList.csv`](stormList.csv)
 A list of all geomagnetic storms from 1995 through 2019. The times contained within are
 the SYM-H minima of those storms. This list is the same as the one used in
