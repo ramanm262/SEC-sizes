@@ -258,6 +258,8 @@ def stats_analysis(config_dict):
         all_B_interps = np.sqrt(all_BN_interps**2 + all_BE_interps**2)
         del all_BN_interps, all_BE_interps
 
+    # Take the derivative of all_B_interps
+    all_B_interps = all_B_interps.diff().dropna()
     poi_geocolats = np.pi / 2 - np.pi / 180 * poi_coords_list[0]
     poi_geolons = np.pi / 180 * poi_coords_list[1]
 
@@ -318,6 +320,7 @@ def stats_analysis(config_dict):
     # Loop through each timestep. Plot some of the heatmaps and extract information on LGMDs.
     perimeters = []
     aspect_ratios = []
+    centroids = []
     for timestep in tqdm.trange(len(all_B_interps),
                                 desc=f'Generating heatmaps for solar cycle phase "{solar_cycle_phase}"'):
         # We take the absolute value of the heatmaps so that contours are computed at the same level for pos and neg
@@ -349,6 +352,7 @@ def stats_analysis(config_dict):
         # Plot the contours on the interpolation plot and calculate their perimeter and aspect ratios
         this_perimeters = []
         this_aspect_ratios = []
+        this_centroids = []
         for contour in contours:
             this_contour_lons = poi_lons_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
             this_contour_lats = poi_lats_mesh[contour[:, 0].astype(int), contour[:, 1].astype(int)]
@@ -362,11 +366,16 @@ def stats_analysis(config_dict):
                 ar = calculate_aspect_ratio(contour_copy, poi_coords_list=poi_coords_list)
                 this_perimeters.append(p)
                 this_aspect_ratios.append(ar)
+                centroid_lat = np.mean(this_contour_lats)
+                centroid_lon = np.mean(this_contour_lons)
+                this_centroids.append((centroid_lat, centroid_lon))
+
 
         if plot_interps and (timestep % plot_every_n_interps == 0) and (len(this_perimeters) != 0):
             plt.savefig(interp_plots_location + f"interpolated_values_{timestep}.pdf")
         perimeters.append(this_perimeters)
         aspect_ratios.append(this_aspect_ratios)
+        centroids.append(this_centroids)
 
     num_of_perimeters_list = [len(timestep) for timestep in perimeters]
     all_perimeter_sizes_list = [perimeter for timestep in perimeters for perimeter in timestep]
@@ -389,64 +398,44 @@ def stats_analysis(config_dict):
     five_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 5 for ar in timestep]
     six_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 6 for ar in timestep]
 
+    # for each centroid, calculate the distance to the nearest station
+    centroid_distances = []
+    for timestep in tqdm.tqdm(centroids, desc="Calculating distances between centroids and magnetometers"):
+        this_distances = []
+        for centroid in timestep:
+            distances = []
+            for station_lat, station_lon in zip(station_coords_list[0], station_coords_list[1]):
+                dist_to_station = haversine_distances([[centroid[0], centroid[1]], [station_lat, station_lon]])[0][1]
+                dist_to_station *= 6378100 * np.pi / (1000 * 180)
+                distances.append(dist_to_station)
+            this_distances.append(np.min(distances))
+        centroid_distances.append(this_distances)
+    all_centroid_dists_list = [dist for timestep in centroid_distances for dist in timestep]
 
-    fig, axs = plt.subplots(1, 3, figsize=(14, 5))
-    perimeter_violin = axs[0].violinplot([one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
-                   five_perimeter_sizes, six_perimeter_sizes], showmedians=True, showextrema=True,
-                   quantiles=[[.05, .95] for _ in range(6)])
-    axs[0].set_yscale("log")
-    axs[0].set_ylabel("Perimeter (km)", fontsize=14)
-    axs[0].set_xlabel("Number of LGMDs", fontsize=14)
-    axs[0].yaxis.set_tick_params(labelsize=14)
-    axs[0].xaxis.set_tick_params(labelsize=14)
-    perimeter_violin["cmedians"].set_edgecolor("black")
-    perimeter_violin["cmedians"].set_linewidth(2)
-    perimeter_violin["cquantiles"].set_edgecolor("darkorange")
-    perimeter_violin["cquantiles"].set_linewidth(2)
-    perimeter_violin["cmaxes"].set_edgecolor("#4daf4a")
-    perimeter_violin["cmins"].set_edgecolor("#4daf4a")
-    perimeter_violin["cmaxes"].set_linewidth(2)
-    perimeter_violin["cmins"].set_linewidth(2)
-    legend_lines = [Line2D([0], [0], color="black", lw=2),
-                    Line2D([0], [0], color="darkorange", lw=2),
-                    Line2D([0], [0], color="#4daf4a", lw=2)]
-    axs[0].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
-    ar_violin = axs[1].violinplot([one_perimeter_ars, two_perimeter_ars, three_perimeter_ars, four_perimeter_ars,
-                                  five_perimeter_ars, six_perimeter_ars], showmedians=True, showextrema=True,
-                                 quantiles=[[.05, .95] for _ in range(6)])
-    axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
-    axs[1].set_xlabel("Number of LGMDs", fontsize=14)
-    axs[1].yaxis.set_tick_params(labelsize=14)
-    axs[1].xaxis.set_tick_params(labelsize=14)
-    ar_violin["cmedians"].set_edgecolor("black")
-    ar_violin["cmedians"].set_linewidth(2)
-    ar_violin["cquantiles"].set_edgecolor("darkorange")
-    ar_violin["cquantiles"].set_linewidth(2)
-    ar_violin["cmaxes"].set_edgecolor("#4daf4a")
-    ar_violin["cmins"].set_edgecolor("#4daf4a")
-    ar_violin["cmaxes"].set_linewidth(2)
-    ar_violin["cmins"].set_linewidth(2)
-    axs[1].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
-    axs[2].hist2d(all_perimeter_sizes_list, all_log_ars_list, bins=[160, 200])
-    axs[2].set_xlim(400, 4000)
-    axs[2].set_ylim(.2, .8)
-    axs[2].set_xlabel("Perimeter (km)", fontsize=14)
-    axs[2].set_ylabel("log(Aspect Ratio)", fontsize=14)
-    axs[2].yaxis.set_tick_params(labelsize=14)
-    axs[2].xaxis.set_tick_params(labelsize=14)
-    divider = make_axes_locatable(axs[2])
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    plt.colorbar(axs[2].collections[0], cax=cax, orientation='vertical')
-    cax.set_title("Counts", fontsize=14)
+    plt.figure()
+    plt.hist(all_centroid_dists_list, bins=100, density=False)
+    plt.title("Distances between LGMD centroids and magnetometers", fontsize=16)
+    plt.xlabel("Distance (km)", fontsize=14)
+    plt.ylabel("Frequency of occurrence", fontsize=14)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "violin_perimeters_ars.pdf")
+    plt.savefig(stats_plots_location + "centroid_distances.pdf")
 
-    index_at_interp_time = index_data.loc[all_B_interps.index]
-    perimeters_means = [np.mean(timestep) for timestep in perimeters]
-    ar_means = [np.mean(np.log10(timestep)) for timestep in aspect_ratios]
-    plot_gm_index_histogram(num_of_perimeters_list, index_at_interp_time, attribute_name="Number")
-    plot_gm_index_histogram(perimeters_means, index_at_interp_time, attribute_name="Perimeter")
-    plot_gm_index_histogram(ar_means, index_at_interp_time, attribute_name="log(A)")
+    fig, axs = plt.subplots(1, 2, figsize=(11, 5))
+    cdist_vs_size = axs[0].hist2d(all_centroid_dists_list, all_perimeter_sizes_list, bins=[100, 100])
+    axs[0].set_ylabel("Perimeter (km)", fontsize=14)
+    for ax_num in range(len(axs)):
+        axs[ax_num].xaxis.set_tick_params(labelsize=14)
+        axs[ax_num].yaxis.set_tick_params(labelsize=14)
+        axs[0].set_xlabel("Distance to nearest station (km)", fontsize=14)
+    # divider = make_axes_locatable(axs[0])
+    # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # plt.colorbar(cdist_vs_size[3], cax=cax, orientation='vertical')
+    cdist_vs_ar = axs[1].hist2d(all_centroid_dists_list, all_log_ars_list, bins=[100, 100])
+    axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
+    plt.savefig(stats_plots_location + "centroid_distances_vs_size_and_ar.pdf")
+
 
     min_index_data = index_data.rolling(window=30).min()
     min_index_data = min_index_data.loc[all_B_interps.index]
