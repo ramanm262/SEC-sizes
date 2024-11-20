@@ -136,6 +136,6 @@ if __name__ == "__main__":
     mag_files_path = "/data/supermag/baseline/"
     omni_files_path = "/data/omni/hro_1min/"
 
-    preprocess_supermag(stime, etime, mag_files_path, stations_list, f"{syear}-{eyear}", interpolate=True,
+    preprocess_supermag(stime, etime, mag_files_path, stations_list, f"{syear}-{eyear}", interpolate=False,
                         method="linear", limit=10)
-    preprocess_omni(syear, eyear, omni_files_path, interpolate=True, method='linear', limit=None, to_drop=[])
+    preprocess_omni(syear, eyear, omni_files_path, interpolate=False, method='linear', limit=None, to_drop=[])
