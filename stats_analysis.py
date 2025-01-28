@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.cm as cm
-from matplotlib.lines import Line2D
 import cartopy.crs as ccrs
 import pandas as pd
 import numpy as np
@@ -35,7 +34,12 @@ def calculate_aspect_ratio(contour, poi_coords_list):
     contour[:, 0], contour[:, 1] = (contour[:, 0] * rad_between_rows + poi_coords_list[0][0] * np.pi / 180,
                                     contour[:, 1] * rad_between_cols + poi_coords_list[1][0] * np.pi / 180)
     # Aspect ratio = longitudinal extent / latitudinal extent
-    aspect_ratio = (max(contour[:, 1]) - min(contour[:, 1])) / (max(contour[:, 0]) - min(contour[:, 0]))
+    lon_easternmost, lon_westernmost = np.max(contour[:, 1]), np.min(contour[:, 1])
+    lat_easternmost, lat_westernmost = contour[np.argmax(contour[:, 1]), 0], contour[np.argmin(contour[:, 1]), 0]
+    lat_northernmost, lat_southernmost = np.max(contour[:, 0]), np.min(contour[:, 0])
+    e_w_average = (lat_easternmost + lat_westernmost) / 2
+    aspect_ratio = (lon_easternmost - lon_westernmost) * np.cos(e_w_average) / (lat_northernmost - lat_southernmost)
+
     return aspect_ratio
 
 
@@ -80,9 +84,9 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.legend(fontsize=14)
     plt.tight_layout()
     plt.savefig(stats_plots_location + "num_of_blobs.pdf")
-    full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(8), density=True)
-    smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(8), density=True)
-    smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(8), density=True)
+    full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(7), density=True)
+    smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(7), density=True)
+    smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(7), density=True)
     plt.figure()
     kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
     kl, _ = kl_divergence(smax, smin, bins)
@@ -122,7 +126,6 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
-    # plt.xlim(2300,2900)
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.pdf")
     full, bins, _patches = plt.hist(sizes_full, bins=num_bins, density=True)
@@ -158,7 +161,7 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.ylabel("Relative frequency of occurrence", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
-    plt.legend(fontsize=14)
+    plt.legend(fontsize=13)
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.pdf")
     full, bins, _patches = plt.hist(np.log10(ars_full), bins=50, density=True)
@@ -185,6 +188,7 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
 def plot_num_and_sizes(num_full, sizes_full, log_y=True):
     fig, axs = plt.subplots(1, 2, figsize=(10.5, 4), width_ratios=[1, 1.5])
     num_bins = 100
+    sizes_full = np.array(sizes_full)[np.where(np.array(sizes_full) > 400)]
     axs[0].hist(num_full, bins=np.arange(8), align="left", density=True)
     axs[0].set_title("Number of Identified LGMDs", fontsize=16)
     axs[0].set_xlabel("# of LGMDs", fontsize=14)
@@ -258,8 +262,6 @@ def stats_analysis(config_dict):
         all_B_interps = np.sqrt(all_BN_interps**2 + all_BE_interps**2)
         del all_BN_interps, all_BE_interps
 
-    # Take the derivative of all_B_interps
-    all_B_interps = all_B_interps.diff().dropna()
     poi_geocolats = np.pi / 2 - np.pi / 180 * poi_coords_list[0]
     poi_geolons = np.pi / 180 * poi_coords_list[1]
 
@@ -299,6 +301,8 @@ def stats_analysis(config_dict):
 
     # Load SuperMAG and geomagnetic index data for comparison to interpolations
     mag_data = preprocessing.load_supermag(stations_list, syear, eyear, B_param, saving=False)
+    # all_B_interps = all_B_interps.diff().dropna()  # Uncomment to use dB/dt instead of dB
+    # mag_data = mag_data.diff().dropna()  # Uncomment to use dB/dt instead of dB
     mag_data.drop_duplicates(inplace=True)  # Remove timestamps that are double-counted by immediately successive storms
     all_B_interps.drop_duplicates(inplace=True)
     assert len(mag_data) == len(all_B_interps)
@@ -316,6 +320,7 @@ def stats_analysis(config_dict):
     else:
         print("Using data from the entire solar cycle")
     mag_data = mag_data.loc[all_B_interps.index]  # index_data is pared to the same index later in this script
+
 
     # Loop through each timestep. Plot some of the heatmaps and extract information on LGMDs.
     perimeters = []
@@ -359,10 +364,11 @@ def stats_analysis(config_dict):
             if plot_interps and (timestep % plot_every_n_interps == 0):  # Only plot if plotting is enabled
                 ax2.plot(this_contour_lons, this_contour_lats, linewidth=4, color='black', transform=ccrs.PlateCarree())
             if contour[0, 0] == contour[-1, 0] and contour[0, 1] == contour[-1, 1]:  # If contour is closed
+                contour[:, 0] = contour[:, 0].astype(int)
+                contour[:, 1] = contour[:, 1].astype(int)
                 contour_copy = contour.copy()
-                contour_copy[:, 0] = contour_copy[:, 0].astype(int)
-                contour_copy[:, 1] = contour_copy[:, 1].astype(int)
                 p = calculate_perimeter(contour_copy, poi_coords_list=poi_coords_list)
+                contour_copy = contour.copy()
                 ar = calculate_aspect_ratio(contour_copy, poi_coords_list=poi_coords_list)
                 this_perimeters.append(p)
                 this_aspect_ratios.append(ar)
@@ -412,6 +418,48 @@ def stats_analysis(config_dict):
         centroid_distances.append(this_distances)
     all_centroid_dists_list = [dist for timestep in centroid_distances for dist in timestep]
 
+    # Violin plots
+    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    perimeter_violin = axs[0].violinplot(
+        [one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
+         five_perimeter_sizes], showmedians=True, showextrema=True,
+        quantiles=[[.05, .95] for _ in range(5)])
+    axs[0].set_yscale("log")
+    axs[0].set_ylabel("Perimeter (km)", fontsize=14)
+    axs[0].set_xlabel("Number of LGMDs", fontsize=14)
+    axs[0].yaxis.set_tick_params(labelsize=14)
+    axs[0].xaxis.set_tick_params(labelsize=14)
+    perimeter_violin["cmedians"].set_edgecolor("black")
+    perimeter_violin["cmedians"].set_linewidth(2)
+    perimeter_violin["cquantiles"].set_edgecolor("darkorange")
+    perimeter_violin["cquantiles"].set_linewidth(2)
+    perimeter_violin["cmaxes"].set_edgecolor("#4daf4a")
+    perimeter_violin["cmins"].set_edgecolor("#4daf4a")
+    perimeter_violin["cmaxes"].set_linewidth(2)
+    perimeter_violin["cmins"].set_linewidth(2)
+    legend_lines = [Line2D([0], [0], color="black", lw=2),
+                    Line2D([0], [0], color="darkorange", lw=2),
+                    Line2D([0], [0], color="#4daf4a", lw=2)]
+    axs[0].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
+    ar_violin = axs[1].violinplot([one_perimeter_ars, two_perimeter_ars, three_perimeter_ars, four_perimeter_ars,
+                                   five_perimeter_ars], showmedians=True, showextrema=True,
+                                  quantiles=[[.05, .95] for _ in range(5)])
+    axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
+    axs[1].set_xlabel("Number of LGMDs", fontsize=14)
+    axs[1].yaxis.set_tick_params(labelsize=14)
+    axs[1].xaxis.set_tick_params(labelsize=14)
+    ar_violin["cmedians"].set_edgecolor("black")
+    ar_violin["cmedians"].set_linewidth(2)
+    ar_violin["cquantiles"].set_edgecolor("darkorange")
+    ar_violin["cquantiles"].set_linewidth(2)
+    ar_violin["cmaxes"].set_edgecolor("#4daf4a")
+    ar_violin["cmins"].set_edgecolor("#4daf4a")
+    ar_violin["cmaxes"].set_linewidth(2)
+    ar_violin["cmins"].set_linewidth(2)
+    axs[1].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
+    plt.tight_layout()
+    plt.savefig(stats_plots_location + "violin_perimeters_ars.pdf")
+
     plt.figure()
     plt.hist(all_centroid_dists_list, bins=100, density=False)
     plt.title("Distances between LGMD centroids and magnetometers", fontsize=16)
@@ -436,38 +484,38 @@ def stats_analysis(config_dict):
     axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
     plt.savefig(stats_plots_location + "centroid_distances_vs_size_and_ar.pdf")
 
-
-    min_index_data = index_data.rolling(window=30).min()
-    min_index_data = min_index_data.loc[all_B_interps.index]
-    plot_gm_index_histogram(perimeters_means, min_index_data, attribute_name="Perimeter", rolling=True)
-    plot_gm_index_histogram(ar_means, min_index_data, attribute_name="log(A)", rolling=True)
-
-    mlt_data = (all_B_interps.index.hour - 6) % 24  # UTC to MST conversion
-    concatenated_data = pd.concat([pd.DataFrame(mlt_data, index=all_B_interps.index),
-                                      pd.DataFrame(perimeters_means, index=all_B_interps.index)], axis=1)
-    concatenated_data.dropna(inplace=True)
-    mlt_data = concatenated_data.iloc[:, 0]
-    perimeters_means = concatenated_data.iloc[:, 1]
-    plt.figure(figsize=(6, 4))
-    plt.hist2d(mlt_data, perimeters_means, bins=[24, 50])
-    plt.ylim(280, 5000)
-    plt.colorbar()
-    plt.xlabel("MLT", fontsize=14)
-    plt.ylabel("Per-Minute Mean LGMD Perimeter (km)", fontsize=14)
-    plt.savefig(stats_plots_location + "mlt_perimeter_means_histogram.png")
-
-    concatenated_data = pd.concat([pd.DataFrame(mlt_data, index=all_B_interps.index),
-                                      pd.DataFrame(ar_means, index=all_B_interps.index)], axis=1)
-    concatenated_data.dropna(inplace=True)
-    mlt_data = concatenated_data.iloc[:, 0]
-    ar_means = concatenated_data.iloc[:, 1]
-    plt.figure(figsize=(6, 4))
-    plt.hist2d(mlt_data, ar_means, bins=[24, 160])
-    plt.ylim(.2, .8)
-    plt.colorbar()
-    plt.xlabel("MLT", fontsize=14)
-    plt.ylabel("Per-Minute Mean LGMD Aspect Ratio (km)", fontsize=14)
-    plt.savefig(stats_plots_location + "mlt_ar_means_histogram.png")
+    # Rolling mean plots
+    # min_index_data = index_data.rolling(window=30).min()
+    # min_index_data = min_index_data.loc[all_B_interps.index]
+    # plot_gm_index_histogram(perimeters_means, min_index_data, attribute_name="Perimeter", rolling=True)
+    # plot_gm_index_histogram(ar_means, min_index_data, attribute_name="log(A)", rolling=True)
+    #
+    # mlt_data = (all_B_interps.index.hour - 6) % 24  # UTC to MST conversion
+    # concatenated_data = pd.concat([pd.DataFrame(mlt_data, index=all_B_interps.index),
+    #                                   pd.DataFrame(perimeters_means, index=all_B_interps.index)], axis=1)
+    # concatenated_data.dropna(inplace=True)
+    # mlt_data = concatenated_data.iloc[:, 0]
+    # perimeters_means = concatenated_data.iloc[:, 1]
+    # plt.figure(figsize=(6, 4))
+    # plt.hist2d(mlt_data, perimeters_means, bins=[24, 50])
+    # plt.ylim(280, 5000)
+    # plt.colorbar()
+    # plt.xlabel("MLT", fontsize=14)
+    # plt.ylabel("Per-Minute Mean LGMD Perimeter (km)", fontsize=14)
+    # plt.savefig(stats_plots_location + "mlt_perimeter_means_histogram.png")
+    #
+    # concatenated_data = pd.concat([pd.DataFrame(mlt_data, index=all_B_interps.index),
+    #                                   pd.DataFrame(ar_means, index=all_B_interps.index)], axis=1)
+    # concatenated_data.dropna(inplace=True)
+    # mlt_data = concatenated_data.iloc[:, 0]
+    # ar_means = concatenated_data.iloc[:, 1]
+    # plt.figure(figsize=(6, 4))
+    # plt.hist2d(mlt_data, ar_means, bins=[24, 160])
+    # plt.ylim(.2, .8)
+    # plt.colorbar()
+    # plt.xlabel("MLT", fontsize=14)
+    # plt.ylabel("Per-Minute Mean LGMD Aspect Ratio (km)", fontsize=14)
+    # plt.savefig(stats_plots_location + "mlt_ar_means_histogram.png")
 
 
     print("Perimeters:", np.median(one_perimeter_sizes), np.median(two_perimeter_sizes), np.median(three_perimeter_sizes),
@@ -539,7 +587,7 @@ def stats_analysis(config_dict):
         plt.tight_layout()
         plt.savefig(stats_plots_location + "blob_size_timeseries.pdf")
     except ValueError:
-        print('#'*8+"\nWarning!\nSkipping example storm plot because there is no data for it.\n"
+        print('#'*8 +"\nWarning!\nSkipping example storm plot because there is no data for it.\n"
                     "Ensure the storm dates that determine solar_cycle_phase are set correctly.\n"+'#'*8)
 
     return num_of_perimeters_list, all_perimeter_sizes_list, all_ars_list
@@ -562,7 +610,7 @@ if __name__ == "__main__":
     epsilon = 0.09323151264778985
     B_param = "dbn_geo"  # "dbn_geo", "dbe_geo", or "HORIZONTAL"
     contour_level = 25.95
-    omni_feature = "AE_INDEX"
+    omni_feature = "SYM_H"
     plot_interps = True
     plot_every_n_interps = 5000
     solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
