@@ -2,7 +2,7 @@
 
 Code repository for the paper "Localized Geomagnetic Disturbances: A Statistical Analysis 
 of Spatial Scale" by R. Mukundan, A. Keesee, J. Marchezi, V. Pinto, M. Coughlan, and D. 
-Hampton (2024). For anay questions regarding this code, please contact
+Hampton (2025). For any questions regarding this code, please contact
 [raman.mukundan@unh.edu](mailto:raman.mukundan@unh.edu) .
 
 ## How to use
