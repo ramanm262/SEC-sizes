@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib.cm as cm
 import cartopy.crs as ccrs
@@ -78,12 +79,12 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
         plt.yscale("log")
     plt.title("Number of Identified LGMDs", fontsize=16)
     plt.xlabel("# of LGMDs", fontsize=14)
-    plt.ylabel("Relative frequency of occurrence", fontsize=14)
+    plt.ylabel("Probability Density", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + "num_of_blobs.pdf")
+    plt.savefig(stats_plots_location + "num_of_blobs.jpg")
     full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(7), density=True)
     smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(7), density=True)
     smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(7), density=True)
@@ -115,19 +116,20 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
             num_bins = int(np.max(sizes_min)/50)
         except:
             num_bins = int(np.max(sizes_max)/50)
-    plt.hist(sizes_full, bins=num_bins, histtype="step", label="Full Solar Cycle", align="left", density=True)
-    plt.hist(sizes_min, bins=num_bins, histtype="step", label="Solar Minimum", align="left", density=True)
-    plt.hist(sizes_max, bins=num_bins, histtype="step", label="Solar Maximum", align="left", density=True)
+    plot_range = (0, 12500)
+    plt.hist(sizes_full, bins=num_bins, histtype="step", label="Full Solar Cycle", align="left", density=True, range=plot_range)
+    plt.hist(sizes_min, bins=num_bins, histtype="step", label="Solar Minimum", align="left", density=True, range=plot_range)
+    plt.hist(sizes_max, bins=num_bins, histtype="step", label="Solar Maximum", align="left", density=True, range=plot_range)
     if log_y:
         plt.yscale("log")
     plt.title("LGMD Sizes", fontsize=16)
     plt.xlabel("LGMD Perimeter (km)", fontsize=14)
-    plt.ylabel("Relative frequency of occurrence", fontsize=14)
+    plt.ylabel("Probability Density", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=14)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.pdf")
+    plt.savefig(stats_plots_location + f"blob_sizes_{n_sec_lat}by{n_sec_lon}.jpg")
     full, bins, _patches = plt.hist(sizes_full, bins=num_bins, density=True)
     smin, bins, _patches = plt.hist(sizes_min, bins=num_bins, density=True)
     smax, bins, _patches = plt.hist(sizes_max, bins=num_bins, density=True)
@@ -150,20 +152,21 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
 def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     num_of_variables = (len(ars_full) > 0) + (len(ars_min) > 0) + (len(ars_max) > 0)
     assert num_of_variables > 0
-    plt.figure(figsize=(6, 4))
-    plt.hist(np.log10(ars_full), bins=100, histtype="step", label="Full Solar Cycle", align="left", density=True)
-    plt.hist(np.log10(ars_min), bins=100, histtype="step", label="Solar Minimum", align="left", density=True)
-    plt.hist(np.log10(ars_max), bins=100, histtype="step", label="Solar Maximum", align="left", density=True)
+    plt.figure(figsize=(6.2, 4))
+    plot_range = (-0.6, 1.3)
+    plt.hist(np.log10(ars_full), bins=100, histtype="step", label="Full Solar Cycle", align="left", density=True, range=plot_range)
+    plt.hist(np.log10(ars_min), bins=100, histtype="step", label="Solar Minimum", align="left", density=True, range=plot_range)
+    plt.hist(np.log10(ars_max), bins=100, histtype="step", label="Solar Maximum", align="left", density=True, range=plot_range)
     if log_y:
         plt.yscale("log")
     plt.title("LGMD Aspect Ratios", fontsize=16)
     plt.xlabel("$log_{10}($Aspect Ratio$)$", fontsize=14)
-    plt.ylabel("Relative frequency of occurrence", fontsize=14)
+    plt.ylabel("Probability Density", fontsize=14)
     plt.yticks(fontsize=14)
     plt.xticks(fontsize=14)
     plt.legend(fontsize=13)
     plt.tight_layout()
-    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.pdf")
+    plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.jpg")
     full, bins, _patches = plt.hist(np.log10(ars_full), bins=50, density=True)
     smin, bins, _patches = plt.hist(np.log10(ars_min), bins=50, density=True)
     smax, bins, _patches = plt.hist(np.log10(ars_max), bins=50, density=True)
@@ -192,11 +195,11 @@ def plot_num_and_sizes(num_full, sizes_full, log_y=True):
     axs[0].hist(num_full, bins=np.arange(8), align="left", density=True)
     axs[0].set_title("Number of Identified LGMDs", fontsize=16)
     axs[0].set_xlabel("# of LGMDs", fontsize=14)
-    axs[0].set_ylabel("Relative frequency of occurrence", fontsize=14)
+    axs[0].set_ylabel("Probability Density", fontsize=14)
     axs[1].hist(sizes_full, bins=int(np.max(sizes_full)/50), align="left", density=True)
     axs[1].set_title("LGMD Sizes", fontsize=16)
     axs[1].set_xlabel("LGMD Perimeter (km)", fontsize=14)
-    axs[1].set_ylabel("Relative frequency of occurrence", fontsize=14)
+    axs[1].set_ylabel("Probability Density", fontsize=14)
     if log_y:
         axs[0].set_yscale("log")
         axs[1].set_yscale("log")
@@ -204,7 +207,7 @@ def plot_num_and_sizes(num_full, sizes_full, log_y=True):
     # Label the subplots a and b
     axs[0].text(.9, .9, "a", transform=axs[0].transAxes, fontsize=20, fontweight='bold', va='top')
     axs[1].text(.9, .9, "b", transform=axs[1].transAxes, fontsize=20, fontweight='bold', va='top')
-    plt.savefig(stats_plots_location + "combined_num_and_sizes.pdf")
+    plt.savefig(stats_plots_location + "combined_num_and_sizes.jpg")
 
 
 def plot_gm_index_histogram(lgmd_attribute, index_at_interp_time, attribute_name, rolling=False):
@@ -344,6 +347,10 @@ def stats_analysis(config_dict):
                         cmap=color_map, s=80, marker='s', norm=norm, transform=ccrs.PlateCarree())
             ax2.set_extent((w_lon, e_lon, s_lat, n_lat))
             ax2.gridlines(draw_labels=False)
+            ax2.set_xlabel("Geographic Longitude (degrees)", fontsize=14, labelpad=1)
+            ax2.set_ylabel("Geographic Latitude (degrees)", fontsize=14, labelpad=1)
+            ax2.set_xticks([])
+            ax2.set_yticks([])
             ax2.coastlines()
             ax2.set_title(f"Interpolation {mag_data.index[timestep]} ($\\epsilon$ = {epsilon:.4f})", fontsize=16)
             cb = fig.colorbar(scalarmappable, ax=(ax1, ax2), cax=cax, orientation='vertical')
@@ -405,84 +412,84 @@ def stats_analysis(config_dict):
     six_perimeter_ars = [np.log10(ar) for timestep in aspect_ratios if len(timestep) == 6 for ar in timestep]
 
     # for each centroid, calculate the distance to the nearest station
-    centroid_distances = []
-    for timestep in tqdm.tqdm(centroids, desc="Calculating distances between centroids and magnetometers"):
-        this_distances = []
-        for centroid in timestep:
-            distances = []
-            for station_lat, station_lon in zip(station_coords_list[0], station_coords_list[1]):
-                dist_to_station = haversine_distances([[centroid[0], centroid[1]], [station_lat, station_lon]])[0][1]
-                dist_to_station *= 6378100 * np.pi / (1000 * 180)
-                distances.append(dist_to_station)
-            this_distances.append(np.min(distances))
-        centroid_distances.append(this_distances)
-    all_centroid_dists_list = [dist for timestep in centroid_distances for dist in timestep]
+    # centroid_distances = []
+    # for timestep in tqdm.tqdm(centroids, desc="Calculating distances between centroids and magnetometers"):
+    #     this_distances = []
+    #     for centroid in timestep:
+    #         distances = []
+    #         for station_lat, station_lon in zip(station_coords_list[0], station_coords_list[1]):
+    #             dist_to_station = haversine_distances([[centroid[0], centroid[1]], [station_lat, station_lon]])[0][1]
+    #             dist_to_station *= 6378100 * np.pi / (1000 * 180)
+    #             distances.append(dist_to_station)
+    #         this_distances.append(np.min(distances))
+    #     centroid_distances.append(this_distances)
+    # all_centroid_dists_list = [dist for timestep in centroid_distances for dist in timestep]
 
     # Violin plots
-    fig, axs = plt.subplots(1, 2, figsize=(12, 5))
-    perimeter_violin = axs[0].violinplot(
-        [one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
-         five_perimeter_sizes], showmedians=True, showextrema=True,
-        quantiles=[[.05, .95] for _ in range(5)])
-    axs[0].set_yscale("log")
-    axs[0].set_ylabel("Perimeter (km)", fontsize=14)
-    axs[0].set_xlabel("Number of LGMDs", fontsize=14)
-    axs[0].yaxis.set_tick_params(labelsize=14)
-    axs[0].xaxis.set_tick_params(labelsize=14)
-    perimeter_violin["cmedians"].set_edgecolor("black")
-    perimeter_violin["cmedians"].set_linewidth(2)
-    perimeter_violin["cquantiles"].set_edgecolor("darkorange")
-    perimeter_violin["cquantiles"].set_linewidth(2)
-    perimeter_violin["cmaxes"].set_edgecolor("#4daf4a")
-    perimeter_violin["cmins"].set_edgecolor("#4daf4a")
-    perimeter_violin["cmaxes"].set_linewidth(2)
-    perimeter_violin["cmins"].set_linewidth(2)
-    legend_lines = [Line2D([0], [0], color="black", lw=2),
-                    Line2D([0], [0], color="darkorange", lw=2),
-                    Line2D([0], [0], color="#4daf4a", lw=2)]
-    axs[0].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
-    ar_violin = axs[1].violinplot([one_perimeter_ars, two_perimeter_ars, three_perimeter_ars, four_perimeter_ars,
-                                   five_perimeter_ars], showmedians=True, showextrema=True,
-                                  quantiles=[[.05, .95] for _ in range(5)])
-    axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
-    axs[1].set_xlabel("Number of LGMDs", fontsize=14)
-    axs[1].yaxis.set_tick_params(labelsize=14)
-    axs[1].xaxis.set_tick_params(labelsize=14)
-    ar_violin["cmedians"].set_edgecolor("black")
-    ar_violin["cmedians"].set_linewidth(2)
-    ar_violin["cquantiles"].set_edgecolor("darkorange")
-    ar_violin["cquantiles"].set_linewidth(2)
-    ar_violin["cmaxes"].set_edgecolor("#4daf4a")
-    ar_violin["cmins"].set_edgecolor("#4daf4a")
-    ar_violin["cmaxes"].set_linewidth(2)
-    ar_violin["cmins"].set_linewidth(2)
-    axs[1].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
-    plt.tight_layout()
-    plt.savefig(stats_plots_location + "violin_perimeters_ars.pdf")
+    # fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+    # perimeter_violin = axs[0].violinplot(
+    #     [one_perimeter_sizes, two_perimeter_sizes, three_perimeter_sizes, four_perimeter_sizes,
+    #      five_perimeter_sizes], showmedians=True, showextrema=True,
+    #     quantiles=[[.05, .95] for _ in range(5)])
+    # axs[0].set_yscale("log")
+    # axs[0].set_ylabel("Perimeter (km)", fontsize=14)
+    # axs[0].set_xlabel("Number of LGMDs", fontsize=14)
+    # axs[0].yaxis.set_tick_params(labelsize=14)
+    # axs[0].xaxis.set_tick_params(labelsize=14)
+    # perimeter_violin["cmedians"].set_edgecolor("black")
+    # perimeter_violin["cmedians"].set_linewidth(2)
+    # perimeter_violin["cquantiles"].set_edgecolor("darkorange")
+    # perimeter_violin["cquantiles"].set_linewidth(2)
+    # perimeter_violin["cmaxes"].set_edgecolor("#4daf4a")
+    # perimeter_violin["cmins"].set_edgecolor("#4daf4a")
+    # perimeter_violin["cmaxes"].set_linewidth(2)
+    # perimeter_violin["cmins"].set_linewidth(2)
+    # legend_lines = [Line2D([0], [0], color="black", lw=2),
+    #                 Line2D([0], [0], color="darkorange", lw=2),
+    #                 Line2D([0], [0], color="#4daf4a", lw=2)]
+    # axs[0].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
+    # ar_violin = axs[1].violinplot([one_perimeter_ars, two_perimeter_ars, three_perimeter_ars, four_perimeter_ars,
+    #                                five_perimeter_ars], showmedians=True, showextrema=True,
+    #                               quantiles=[[.05, .95] for _ in range(5)])
+    # axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
+    # axs[1].set_xlabel("Number of LGMDs", fontsize=14)
+    # axs[1].yaxis.set_tick_params(labelsize=14)
+    # axs[1].xaxis.set_tick_params(labelsize=14)
+    # ar_violin["cmedians"].set_edgecolor("black")
+    # ar_violin["cmedians"].set_linewidth(2)
+    # ar_violin["cquantiles"].set_edgecolor("darkorange")
+    # ar_violin["cquantiles"].set_linewidth(2)
+    # ar_violin["cmaxes"].set_edgecolor("#4daf4a")
+    # ar_violin["cmins"].set_edgecolor("#4daf4a")
+    # ar_violin["cmaxes"].set_linewidth(2)
+    # ar_violin["cmins"].set_linewidth(2)
+    # axs[1].legend(legend_lines, ["Median", "$5^{th}$/$95^{th}$ Percentile", "Minimum/Maximum"], fontsize=10)
+    # plt.tight_layout()
+    # plt.savefig(stats_plots_location + "violin_perimeters_ars.pdf")
 
-    plt.figure()
-    plt.hist(all_centroid_dists_list, bins=100, density=False)
-    plt.title("Distances between LGMD centroids and magnetometers", fontsize=16)
-    plt.xlabel("Distance (km)", fontsize=14)
-    plt.ylabel("Frequency of occurrence", fontsize=14)
-    plt.xticks(fontsize=14)
-    plt.yticks(fontsize=14)
-    plt.tight_layout()
-    plt.savefig(stats_plots_location + "centroid_distances.pdf")
+    # plt.figure()
+    # plt.hist(all_centroid_dists_list, bins=100, density=False)
+    # plt.title("Distances between LGMD centroids and magnetometers", fontsize=16)
+    # plt.xlabel("Distance (km)", fontsize=14)
+    # plt.ylabel("Frequency of occurrence", fontsize=14)
+    # plt.xticks(fontsize=14)
+    # plt.yticks(fontsize=14)
+    # plt.tight_layout()
+    # plt.savefig(stats_plots_location + "centroid_distances.pdf")
 
-    fig, axs = plt.subplots(1, 2, figsize=(11, 5))
-    cdist_vs_size = axs[0].hist2d(all_centroid_dists_list, all_perimeter_sizes_list, bins=[100, 100])
-    axs[0].set_ylabel("Perimeter (km)", fontsize=14)
-    for ax_num in range(len(axs)):
-        axs[ax_num].xaxis.set_tick_params(labelsize=14)
-        axs[ax_num].yaxis.set_tick_params(labelsize=14)
-        axs[0].set_xlabel("Distance to nearest station (km)", fontsize=14)
-    # divider = make_axes_locatable(axs[0])
-    # cax = divider.append_axes('right', size='5%', pad=0.05)
-    # plt.colorbar(cdist_vs_size[3], cax=cax, orientation='vertical')
-    cdist_vs_ar = axs[1].hist2d(all_centroid_dists_list, all_log_ars_list, bins=[100, 100])
-    axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
-    plt.savefig(stats_plots_location + "centroid_distances_vs_size_and_ar.pdf")
+    # fig, axs = plt.subplots(1, 2, figsize=(11, 5))
+    # cdist_vs_size = axs[0].hist2d(all_centroid_dists_list, all_perimeter_sizes_list, bins=[100, 100])
+    # axs[0].set_ylabel("Perimeter (km)", fontsize=14)
+    # for ax_num in range(len(axs)):
+    #     axs[ax_num].xaxis.set_tick_params(labelsize=14)
+    #     axs[ax_num].yaxis.set_tick_params(labelsize=14)
+    #     axs[0].set_xlabel("Distance to nearest station (km)", fontsize=14)
+    # # divider = make_axes_locatable(axs[0])
+    # # cax = divider.append_axes('right', size='5%', pad=0.05)
+    # # plt.colorbar(cdist_vs_size[3], cax=cax, orientation='vertical')
+    # cdist_vs_ar = axs[1].hist2d(all_centroid_dists_list, all_log_ars_list, bins=[100, 100])
+    # axs[1].set_ylabel("log(Aspect Ratio)", fontsize=14)
+    # plt.savefig(stats_plots_location + "centroid_distances_vs_size_and_ar.pdf")
 
     # Rolling mean plots
     # min_index_data = index_data.rolling(window=30).min()
