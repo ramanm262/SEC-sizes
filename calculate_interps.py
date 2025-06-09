@@ -61,7 +61,7 @@ for colat in poi_geocolats:
         all_poi_lats.append(90-colat*180/np.pi)
         all_poi_lons.append(lon)
 
-# Generate a meshgri for the POIs, which are the points we're interpolating onto
+# Generate a meshgrid for the POIs, which are the points we're interpolating onto
 poi_lons_mesh, poi_lats_mesh = np.meshgrid(poi_coords_list[1], poi_coords_list[0])
 
 if load_scaling_factors:  # Either load SEC coefficients from a file...
