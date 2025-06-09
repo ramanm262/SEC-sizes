@@ -36,29 +36,29 @@ def bad_omni_to_nan(df):
     them with np.nan values
     """
     # IMF
-    df.loc[df['B_Total'] >= 9999.99, 'B_Total'] = np.nan
-    df.loc[df['BX_GSE'] >= 9999.99, 'BX_GSE'] = np.nan
-    df.loc[df['BY_GSE'] >= 9999.99, 'BY_GSE'] = np.nan
-    df.loc[df['BZ_GSE'] >= 9999.99, 'BZ_GSE'] = np.nan
-    df.loc[df['BY_GSM'] >= 9999.99, 'BY_GSM'] = np.nan
-    df.loc[df['BZ_GSM'] >= 9999.99, 'BZ_GSM'] = np.nan
+    df.loc[df['B_Total'] >= 9999, 'B_Total'] = np.nan
+    df.loc[df['BX_GSE'] >= 9999, 'BX_GSE'] = np.nan
+    df.loc[df['BY_GSE'] >= 9999, 'BY_GSE'] = np.nan
+    df.loc[df['BZ_GSE'] >= 9999, 'BZ_GSE'] = np.nan
+    df.loc[df['BY_GSM'] >= 9999, 'BY_GSM'] = np.nan
+    df.loc[df['BZ_GSM'] >= 9999, 'BZ_GSM'] = np.nan
 
     # Speed
-    df.loc[df['flow_speed'] >= 99999.9, 'flow_speed'] = np.nan
-    df.loc[df['Vx'] >= 99999.9, 'Vx'] = np.nan
-    df.loc[df['Vy'] >= 99999.9, 'Vy'] = np.nan
-    df.loc[df['Vz'] >= 99999.9, 'Vz'] = np.nan
+    df.loc[df['flow_speed'] >= 99999, 'flow_speed'] = np.nan
+    df.loc[df['Vx'] >= 99999, 'Vx'] = np.nan
+    df.loc[df['Vy'] >= 99999, 'Vy'] = np.nan
+    df.loc[df['Vz'] >= 99999, 'Vz'] = np.nan
 
     # Particles
-    df.loc[df['proton_density'] >= 999.99, 'proton_density'] = np.nan
+    df.loc[df['proton_density'] >= 999, 'proton_density'] = np.nan
     df.loc[df['T'] >= 9999999.0, 'T'] = np.nan
-    df.loc[df['Pressure'] >= 99.99, 'Pressure'] = np.nan
+    df.loc[df['Pressure'] >= 99, 'Pressure'] = np.nan
 
     # Other
-    df.loc[df['E_Field'] >= 999.99, 'E_Field'] = np.nan
-    df.loc[df['Beta'] >= 999.99, 'Beta'] = np.nan
-    df.loc[df['Mach_num'] >= 999.9, 'Mach_num'] = np.nan
-    df.loc[df['Mgs_mach_num'] >= 99.9, 'Mgs_mach_num'] = np.nan
+    df.loc[df['E_Field'] >= 999, 'E_Field'] = np.nan
+    df.loc[df['Beta'] >= 999, 'Beta'] = np.nan
+    df.loc[df['Mach_num'] >= 999, 'Mach_num'] = np.nan
+    df.loc[df['Mgs_mach_num'] >= 99, 'Mgs_mach_num'] = np.nan
 
     # Indices
     df.loc[df['AE_INDEX'] >= 99999, 'AE_INDEX'] = np.nan
