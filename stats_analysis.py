@@ -1,3 +1,5 @@
+from shutil import unregister_archive_format
+
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -59,14 +61,16 @@ def kl_divergence(max_series, min_series, bins, integrated=True):
     """
     to_keep = np.where((min_series != 0) & (max_series != 0))
     max_series, min_series = max_series[to_keep], min_series[to_keep]
+    assert len(bins) > 1
+    bin_width = bins[1] - bins[0]
     bins = bins[to_keep]
     if integrated:
-        # return np.sum(np.abs(max_series - min_series)), bins  # Uncomment to use the total variation instead
-        return (np.sum(max_series * np.log(max_series / min_series)) +
-                np.sum(min_series * np.log(min_series / max_series)), bins)
+        # return 0.5 * np.sum(bin_width * np.abs(max_series - min_series)), bins  # Uncomment to use the total variation instead
+        return (np.sum(bin_width * max_series * np.log(max_series / min_series)) +
+                np.sum(bin_width * min_series * np.log(min_series / max_series)), bins)
     else:
-        # return max_series - min_series, bins  # Uncomment to use the total variation instead
-        return max_series * np.log(max_series / min_series) + min_series * np.log(min_series / max_series), bins
+        # return 0.5 * bin_width * (max_series - min_series), bins  # Uncomment to use the total variation instead
+        return bin_width * (max_series * np.log(max_series / min_series) + min_series * np.log(min_series / max_series)), bins
 
 
 def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log_y=True):
@@ -85,15 +89,15 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.legend(fontsize=14)
     plt.tight_layout()
     plt.savefig(stats_plots_location + "num_of_blobs.jpg")
-    full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(7), density=True)
-    smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(7), density=True)
-    smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(7), density=True)
+    full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(8), density=True)
+    smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(8), density=True)
+    smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(8), density=True)
     plt.figure()
     kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
     kl, _ = kl_divergence(smax, smin, bins)
     plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="center")
-    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
-    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
+    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/(len(smax)+1), bins)
+    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/(len(smin)+1), bins)
     print("Number of LGMDs")
     print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
     print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
@@ -108,7 +112,7 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
 def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     num_of_variables = (len(sizes_full) > 0) + (len(sizes_min) > 0) + (len(sizes_max) > 0)
     assert num_of_variables > 0
-    plt.figure(figsize=(6.5, 4))
+    plt.figure(figsize=(6.5, 4), dpi=300)
     try:
         num_bins = int(np.max(sizes_full)/50)
     except:
@@ -152,7 +156,7 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
 def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     num_of_variables = (len(ars_full) > 0) + (len(ars_min) > 0) + (len(ars_max) > 0)
     assert num_of_variables > 0
-    plt.figure(figsize=(6.2, 4))
+    plt.figure(figsize=(6.2, 4), dpi=300)
     plot_range = (-0.6, 1.3)
     plt.hist(np.log10(ars_full), bins=100, histtype="step", label="Full Solar Cycle", align="left", density=True, range=plot_range)
     plt.hist(np.log10(ars_min), bins=100, histtype="step", label="Solar Minimum", align="left", density=True, range=plot_range)
@@ -167,9 +171,9 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     plt.legend(fontsize=13)
     plt.tight_layout()
     plt.savefig(stats_plots_location + f"aspect_ratios_{n_sec_lat}by{n_sec_lon}.jpg")
-    full, bins, _patches = plt.hist(np.log10(ars_full), bins=50, density=True)
-    smin, bins, _patches = plt.hist(np.log10(ars_min), bins=50, density=True)
-    smax, bins, _patches = plt.hist(np.log10(ars_max), bins=50, density=True)
+    full, bins, _patches = plt.hist(np.log10(ars_full), bins=100, density=True)
+    smin, bins, _patches = plt.hist(np.log10(ars_min), bins=100, density=True)
+    smax, bins, _patches = plt.hist(np.log10(ars_max), bins=100, density=True)
     plt.cla()
     plt.figure()
     kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
@@ -189,17 +193,16 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
 
 
 def plot_num_and_sizes(num_full, sizes_full, log_y=True):
-    fig, axs = plt.subplots(1, 2, figsize=(10.5, 4), width_ratios=[1, 1.5])
+    fig, axs = plt.subplots(1, 2, figsize=(10.5, 4), width_ratios=[1, 1.5], dpi=300)
     num_bins = 100
-    sizes_full = np.array(sizes_full)[np.where(np.array(sizes_full) > 400)]
     axs[0].hist(num_full, bins=np.arange(8), align="left", density=True)
     axs[0].set_title("Number of Identified LGMDs", fontsize=16)
     axs[0].set_xlabel("# of LGMDs", fontsize=14)
-    axs[0].set_ylabel("Probability Density", fontsize=14)
+    axs[0].set_ylabel("Frequency of Occurrence", fontsize=14)
     axs[1].hist(sizes_full, bins=int(np.max(sizes_full)/50), align="left", density=True)
     axs[1].set_title("LGMD Sizes", fontsize=16)
     axs[1].set_xlabel("LGMD Perimeter (km)", fontsize=14)
-    axs[1].set_ylabel("Probability Density", fontsize=14)
+    axs[1].set_ylabel("Frequency of Occurrence", fontsize=14)
     if log_y:
         axs[0].set_yscale("log")
         axs[1].set_yscale("log")
