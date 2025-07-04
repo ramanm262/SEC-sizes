@@ -55,29 +55,41 @@ def correlation_with_index(param_series, index_series):
     return pearsonr(combined_df.iloc[:, 0], combined_df.iloc[:, 1])[0]
 
 
-def kl_divergence(max_series, min_series, bins, integrated=True):
+def kl_divergence(max_series, min_series, bins, integrated=True, total_variation=False):
     """
     Calculates the symmetrized Kullback-Leibler divergence between two series.
+    :param max_series: A pandas Series containing the ordered bin heights of the soalr maximum distribution.
+    :param min_series: A pandas Series containing the ordered bin heights of the solar minimum distribution.
+    :param bins: A numpy array containing the bin edges.
+    :param integrated: If True, returns the integrated Kullback-Leibler divergence; otherwise, returns the
+    non-integrated version.
+    :param total_variation: If True, calculates the total variation distance instead of the Kullback-Leibler divergence.
+    :return: The Kullback-Leibler divergence between the two series, and the bin edges.
     """
-    to_keep = np.where((min_series != 0) & (max_series != 0))
-    max_series, min_series = max_series[to_keep], min_series[to_keep]
     assert len(bins) > 1
     bin_width = bins[1] - bins[0]
-    bins = bins[to_keep]
+    if not total_variation:
+        to_keep = np.where((min_series != 0) & (max_series != 0))
+        max_series, min_series = max_series[to_keep], min_series[to_keep]  # Ignore bins where one or both histograms are zero
+        bins = bins[to_keep]
     if integrated:
-        # return 0.5 * np.sum(bin_width * np.abs(max_series - min_series)), bins  # Uncomment to use the total variation instead
-        return (np.sum(bin_width * max_series * np.log(max_series / min_series)) +
+        if total_variation:
+            return 0.5 * np.sum(bin_width * np.abs(max_series - min_series)), bins
+        else:
+            return (np.sum(bin_width * max_series * np.log(max_series / min_series)) +
                 np.sum(bin_width * min_series * np.log(min_series / max_series)), bins)
     else:
-        # return 0.5 * bin_width * (max_series - min_series), bins  # Uncomment to use the total variation instead
-        return bin_width * (max_series * np.log(max_series / min_series) + min_series * np.log(min_series / max_series)), bins
+        if total_variation:
+            return 0.5 * bin_width * (max_series - min_series), bins
+        else:
+            return bin_width * (max_series * np.log(max_series / min_series) + min_series * np.log(min_series / max_series)), bins
 
 
-def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log_y=True):
+def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log_y=True, use_total_variation=False):
     num_of_variables = (len(num_blobs_full) > 0) + (len(num_blobs_min) > 0) + (len(num_blobs_max) > 0)
     assert num_of_variables > 0
-    plt.figure(figsize=(5.5, 4))
-    plt.hist([num_blobs_full, num_blobs_min, num_blobs_max], bins=np.arange(8),
+    plt.figure(figsize=(5.5, 4), dpi=300)
+    hist = plt.hist([num_blobs_full, num_blobs_min, num_blobs_max], bins=np.arange(8),
              label=["Full Solar Cycle", "Solar Minimum", "Solar Maximum"], align="left", density=True)
     if log_y:
         plt.yscale("log")
@@ -89,15 +101,15 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.legend(fontsize=14)
     plt.tight_layout()
     plt.savefig(stats_plots_location + "num_of_blobs.jpg")
-    full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(7), density=True)
-    smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(7), density=True)
-    smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(7), density=True)
+    full, bins, _patches = plt.hist(num_blobs_full, bins=np.arange(8), density=True)
+    smin, bins, _patches = plt.hist(num_blobs_min, bins=np.arange(8), density=True)
+    smax, bins, _patches = plt.hist(num_blobs_max, bins=np.arange(8), density=True)
     plt.figure()
-    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
-    kl, _ = kl_divergence(smax, smin, bins)
+    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False, total_variation=use_total_variation)
+    kl, _ = kl_divergence(smax, smin, bins, total_variation=use_total_variation)
     plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="center")
-    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/(len(smax)+1), bins)
-    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/(len(smin)+1), bins)
+    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/(len(smax)), bins, total_variation=use_total_variation)
+    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/(len(smin)), bins, total_variation=use_total_variation)
     print("Number of LGMDs")
     print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
     print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
@@ -109,7 +121,7 @@ def plot_num_of_blobs(num_blobs_full=[], num_blobs_min=[], num_blobs_max=[], log
     plt.savefig(stats_plots_location + "num_of_blobs_diffs.pdf")
 
 
-def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
+def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True, use_total_variation=False):
     num_of_variables = (len(sizes_full) > 0) + (len(sizes_min) > 0) + (len(sizes_max) > 0)
     assert num_of_variables > 0
     plt.figure(figsize=(6.5, 4), dpi=300)
@@ -138,11 +150,11 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     smin, bins, _patches = plt.hist(sizes_min, bins=num_bins, density=True)
     smax, bins, _patches = plt.hist(sizes_max, bins=num_bins, density=True)
     plt.figure()
-    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
-    kl, _ = kl_divergence(smax, smin, bins)
+    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False, total_variation=use_total_variation)
+    kl, _ = kl_divergence(smax, smin, bins, total_variation=use_total_variation)
     plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="edge")
-    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
-    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
+    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins, total_variation=use_total_variation)
+    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins, total_variation=use_total_variation)
     print("LGMD Sizes")
     print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
     print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
@@ -153,7 +165,7 @@ def plot_blob_sizes(sizes_full=[], sizes_min=[], sizes_max=[], log_y=True):
     plt.savefig(stats_plots_location + f"blob_size_diffs_{n_sec_lat}by{n_sec_lon}.pdf")
 
 
-def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
+def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True, use_total_variation=False):
     num_of_variables = (len(ars_full) > 0) + (len(ars_min) > 0) + (len(ars_max) > 0)
     assert num_of_variables > 0
     plt.figure(figsize=(6.2, 4), dpi=300)
@@ -176,11 +188,11 @@ def plot_aspect_ratios(ars_full=[], ars_min=[], ars_max=[], log_y=True):
     smax, bins, _patches = plt.hist(np.log10(ars_max), bins=100, density=True)
     plt.cla()
     plt.figure()
-    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False)
-    kl, _ = kl_divergence(smax, smin, bins)
+    kl_non_integrated, kl_bins = kl_divergence(smax, smin, bins, integrated=False, total_variation=use_total_variation)
+    kl, _ = kl_divergence(smax, smin, bins, total_variation=use_total_variation)
     plt.bar(kl_bins, kl_non_integrated, width=kl_bins[1]-kl_bins[0], align="edge")
-    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins)
-    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins)
+    kl_smax_uniform, _ = kl_divergence(smax, np.ones_like(smax)/len(smax), bins, total_variation=use_total_variation)
+    kl_smin_uniform, _ = kl_divergence(smin, np.ones_like(smin)/len(smin), bins, total_variation=use_total_variation)
     print("Aspect Ratios")
     print(f"KL Divergence between Solar Maximum and a uniform distribution: {kl_smax_uniform:.4f}")
     print(f"KL Divergence between Solar Minimum and a uniform distribution: {kl_smin_uniform:.4f}")
@@ -626,6 +638,7 @@ if __name__ == "__main__":
     solar_cycle_phase = "full"  # "minimum", "maximum", or "full"
     stats_plots_location = "stats_plots/"
     interp_plots_location = "interp_plots/"
+    use_total_variation = True
 
     config_dict = {"syear": syear, "eyear": eyear, "stations_list": stations_list,
                    "station_coords_list": station_coords_list,
@@ -644,7 +657,7 @@ if __name__ == "__main__":
     config_dict["solar_cycle_phase"] = "maximum"
     num_perimeters_max, sizes_perimeters_max, ars_max = stats_analysis(config_dict)
 
-    plot_num_of_blobs(num_blobs_full=num_perimeters_full, num_blobs_min=num_perimeters_min, num_blobs_max=num_perimeters_max)
-    plot_blob_sizes(sizes_full=sizes_perimeters_full, sizes_min=sizes_perimeters_min, sizes_max=sizes_perimeters_max)
-    plot_aspect_ratios(ars_full=ars_full, ars_min=ars_min, ars_max=ars_max)
+    plot_num_of_blobs(num_blobs_full=num_perimeters_full, num_blobs_min=num_perimeters_min, num_blobs_max=num_perimeters_max, use_total_variation=use_total_variation)
+    plot_blob_sizes(sizes_full=sizes_perimeters_full, sizes_min=sizes_perimeters_min, sizes_max=sizes_perimeters_max, use_total_variation=use_total_variation)
+    plot_aspect_ratios(ars_full=ars_full, ars_min=ars_min, ars_max=ars_max, use_total_variation=use_total_variation)
     plot_num_and_sizes(num_full=num_perimeters_full, sizes_full=sizes_perimeters_full)
